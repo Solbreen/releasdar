@@ -1,0 +1,53 @@
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sample {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.weekend {
+  composes: sample;
+  background: var(--weekend-bg);
+}
+
+.holiday {
+  composes: sample;
+  border-color: var(--holiday-border);
+  background: var(--holiday-bg);
+}
+
+.own {
+  composes: sample;
+  border-color: transparent;
+}
+
+.unsaved {
+  composes: sample;
+  border: 2px dashed var(--own-color);
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--own-color) 0,
+    var(--own-color) 3px,
+    transparent 3px,
+    transparent 7px
+  );
+}

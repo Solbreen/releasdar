@@ -1,0 +1,201 @@
+.year {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 1500px) {
+  .year {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1000px) {
+  .year {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .year {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.month {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.monthTitle {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.weekdays,
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.weekdays {
+  margin-bottom: 4px;
+}
+
+.weekday {
+  color: var(--text-muted);
+  font-size: 11px;
+  text-align: center;
+}
+
+.weekdayWeekend {
+  composes: weekday;
+  color: var(--danger);
+}
+
+.empty {
+  aspect-ratio: 1;
+}
+
+/* Ячейка дня: число сверху, полоски коллег снизу. */
+.day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface);
+  font-size: 12px;
+  line-height: 1;
+  transition: border-color 0.1s ease;
+}
+
+.day:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.dayWeekend {
+  background: var(--weekend-bg);
+}
+
+/* Праздник — свой фон и рамка, заметно отличные от выходного. */
+.dayHoliday {
+  border-color: var(--holiday-border);
+  background: var(--holiday-bg);
+  color: var(--holiday-text);
+}
+
+.dayReadonly {
+  cursor: default;
+  opacity: 1;
+}
+
+.dayNumber {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Свой сохранённый день — сплошная заливка. */
+.day_saved {
+  border-color: var(--own-color);
+  background: var(--own-color);
+  color: #fff;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 35%);
+}
+
+/* Свой выбранный праздник: заливка своим цветом плюс обводка праздника —
+   видно, что день выбран, но в счёт отпуска не идёт. */
+.dayHoliday.day_saved,
+.dayHoliday.day_added {
+  border-color: var(--holiday-border);
+  box-shadow: inset 0 0 0 2px var(--holiday-border);
+}
+
+.dayHoliday.day_added {
+  color: var(--holiday-text);
+}
+
+/* Свой несохранённый добавленный день — штриховка и пунктирная рамка. */
+.day_added {
+  border: 2px dashed var(--own-color);
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--own-color) 0,
+    var(--own-color) 3px,
+    transparent 3px,
+    transparent 7px
+  );
+  font-weight: 600;
+}
+
+/* Свой несохранённый удалённый день — зачёркнут и полупрозрачен. */
+.day_removed {
+  border-color: var(--border-strong);
+  opacity: 0.55;
+}
+
+.day_removed::after {
+  content: '';
+  position: absolute;
+  left: 8%;
+  width: 84%;
+  height: 2px;
+  background: var(--danger);
+  transform: rotate(-32deg);
+}
+
+.day_empty {
+  /* базовый вид */
+}
+
+.marks {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 7px;
+}
+
+.mark {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.markMore {
+  color: var(--text-muted);
+  font-size: 9px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.day_saved .markMore {
+  color: #fff;
+}
+
+.dayHoliday .markMore {
+  color: var(--holiday-text);
+}
+
+/* На самых узких экранах ячейка становится меньше 40px:
+   поджимаем отступы между точками, чтобы 3 точки и «+N» помещались. */
+@media (max-width: 400px) {
+  .marks {
+    gap: 1px;
+  }
+
+  .markMore {
+    font-size: 8px;
+  }
+}

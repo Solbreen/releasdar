@@ -1,0 +1,27 @@
+.app {
+  min-height: 100vh;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 16px;
+  align-items: start;
+  padding: 16px 20px 32px;
+}
+
+/* На узком экране список пользователей уходит под календарь. */
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 12px;
+  }
+}
+
+.calendarColumn {
+  min-width: 0;
+}
+
+.loading {
+  color: var(--text-muted);
+}
