@@ -1,0 +1,12 @@
+.yearSelect { width: auto; }
+.productCreate { width: 100%; margin-bottom: 16px; }
+.productIndicator { width: 14px; height: 14px; border: 0; border-radius: 4px; flex: none; margin-left: 8px; }
+.releaseForm { display: flex; flex-direction: column; gap: 14px; }
+.releaseForm label { display: flex; flex-direction: column; gap: 5px; }
+.releaseForm textarea { min-height: 90px; resize: vertical; font: inherit; }
+.releaseForm h3 { margin: 0; }
+.releaseActions { display: flex; justify-content: flex-end; gap: 8px; }
+.releaseFeed { display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow: auto; }
+.releaseItem { padding: 10px; border: 1px solid var(--border); border-radius: var(--radius); }
+.releaseItem p { margin: 4px 0 0; white-space: pre-wrap; }
+.releaseError { padding: 10px 20px; color: var(--danger); }

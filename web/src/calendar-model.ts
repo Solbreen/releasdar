@@ -1,5 +1,4 @@
 import { daysInMonth, formatIsoDate, isWeekend, weekdayMondayFirst } from '../../shared/dates.js';
-import { findHolidayName } from '../../shared/holidays.js';
 
 export const MONTH_NAMES_RU = [
   'Январь',
@@ -61,7 +60,7 @@ export function buildMonth(year: number, month: number): MonthModel {
       date,
       day,
       weekend: isWeekend(year, month, day),
-      holiday: findHolidayName(date),
+      holiday: null,
     });
   }
   while (cells.length % 7 !== 0) cells.push(null);

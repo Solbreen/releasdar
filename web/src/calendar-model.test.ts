@@ -101,11 +101,11 @@ describe('pluralizeDays', () => {
 });
 
 describe('праздники в модели дня', () => {
-  it('помечает праздничные дни названием', () => {
+  it('не выделяет праздничные дни', () => {
     const january = buildMonth(2027, 1);
     const days = january.weeks.flat().filter((cell) => cell !== null);
-    expect(days[0]).toMatchObject({ date: '2027-01-01', holiday: 'Новогодние каникулы' });
-    expect(days[6]).toMatchObject({ date: '2027-01-07', holiday: 'Рождество Христово' });
+    expect(days[0]).toMatchObject({ date: '2027-01-01', holiday: null });
+    expect(days[6]).toMatchObject({ date: '2027-01-07', holiday: null });
     expect(days[8]).toMatchObject({ date: '2027-01-09', holiday: null });
   });
 
@@ -115,17 +115,17 @@ describe('праздники в модели дня', () => {
     expect(day15?.holiday).toBeNull();
   });
 
-  it('праздник, выпавший на выходной, помечен и как выходной, и как праздник', () => {
+  it('выходной остаётся выходным', () => {
     // 1 мая 2027 — суббота.
     const may = buildMonth(2027, 5);
     const first = may.weeks.flat().find((cell) => cell?.date === '2027-05-01');
-    expect(first).toMatchObject({ weekend: true, holiday: 'Праздник Весны и Труда' });
+    expect(first).toMatchObject({ weekend: true, holiday: null });
   });
 
-  it('в году ровно 14 праздничных дней', () => {
+  it('в году нет особых праздничных дней', () => {
     const holidays = buildYear(2027)
       .flatMap((month) => month.weeks.flat())
       .filter((cell) => cell !== null && cell.holiday !== null);
-    expect(holidays).toHaveLength(14);
+    expect(holidays).toHaveLength(0);
   });
 });

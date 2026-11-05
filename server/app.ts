@@ -2,8 +2,7 @@ import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastif
 import type { Db } from './db.js';
 import type { AppConfig } from './config.js';
 import { ApiError } from './errors.js';
-import { registerUserRoutes } from './routes/users.js';
-import { registerCalendarRoutes } from './routes/calendar.js';
+import { registerReleaseRoutes } from './routes/releases.js';
 import { registerHealthRoutes } from './routes/health.js';
 import { registerStatic } from './static.js';
 
@@ -58,8 +57,7 @@ export async function buildApp(
   });
 
   registerHealthRoutes(app);
-  registerUserRoutes(app, deps);
-  registerCalendarRoutes(app, deps);
+  registerReleaseRoutes(app, deps);
 
   // Обработчик 404 регистрируется один раз: либо отдаёт SPA, либо JSON-ошибку.
   if (options.serveStatic) {

@@ -1,0 +1,42 @@
+import type { FastifyInstance } from 'fastify';
+import { z } from 'zod';
+import type { AppDeps } from '../app.js';
+
+const productSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  manager: z.string().trim().min(1).max(200),
+  description: z.string().max(10000),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+});
+const releaseSchema = z.object({
+  productId: z.number().int().positive(),
+  date: z.iso.date().refine((date) => date >= '2026-01-01' && date <= '2036-12-31'),
+  description: z.string().max(10000),
+});
+
+export function registerReleaseRoutes(app: FastifyInstance, { db }: AppDeps): void {
+  app.get('/api/products', () => db.prepare('SELECT * FROM products ORDER BY id').all());
+  app.post('/api/products', (request, reply) => {
+    const result = productSchema.safeParse(request.body);
+    if (!result.success) return reply.code(400).send({ error: 'Заполните обязательные поля продукта' });
+    const p = result.data;
+    const inserted = db.prepare('INSERT INTO products (name, manager, description, color) VALUES (?, ?, ?, ?)').run(p.name, p.manager, p.description, p.color);
+    return reply.code(201).send({ id: inserted.lastInsertRowid });
+  });
+  app.put<{ Params: { id: string } }>('/api/products/:id', (request, reply) => {
+    const result = productSchema.safeParse(request.body);
+    if (!result.success) return reply.code(400).send({ error: 'Заполните обязательные поля продукта' });
+    const p = result.data;
+    const updated = db.prepare('UPDATE products SET name=?, manager=?, description=?, color=? WHERE id=?').run(p.name, p.manager, p.description, p.color, request.params.id);
+    return updated.changes ? { ok: true } : reply.code(404).send({ error: 'Продукт не найден' });
+  });
+  app.get('/api/releases', () => db.prepare('SELECT id, product_id AS productId, date, description FROM releases ORDER BY date DESC, id DESC').all());
+  app.post('/api/releases', (request, reply) => {
+    const result = releaseSchema.safeParse(request.body);
+    if (!result.success) return reply.code(400).send({ error: 'Выберите продукт и дату с 2026 по 2036 год' });
+    const r = result.data;
+    if (!db.prepare('SELECT id FROM products WHERE id=?').get(r.productId)) return reply.code(400).send({ error: 'Продукт не найден' });
+    const inserted = db.prepare('INSERT INTO releases (product_id, date, description) VALUES (?, ?, ?)').run(r.productId, r.date, r.description);
+    return reply.code(201).send({ id: inserted.lastInsertRowid });
+  });
+}

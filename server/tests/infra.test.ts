@@ -2,8 +2,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import Database from 'better-sqlite3';
+import { readFileSync } from 'node:fs';
 import { migrate, openDb } from '../db.js';
-import { closeTestApp, createTestApp, errorOf, login, type TestContext } from './helpers.js';
+import { closeTestApp, createTestApp, errorOf, type TestContext } from './helpers.js';
 
 describe('миграции', () => {
   it('создают таблицы и записывают версию схемы', () => {
@@ -17,6 +19,8 @@ describe('миграции', () => {
       expect(tables).toContain('users');
       expect(tables).toContain('vacation_days');
       expect(tables).toContain('schema_version');
+      expect(tables).toContain('products');
+      expect(tables).toContain('releases');
 
       const version = db.prepare('SELECT MAX(version) AS version FROM schema_version').get() as {
         version: number;
@@ -88,6 +92,22 @@ describe('миграции', () => {
       expect(row.last_name).toBe('Петров');
       second.close();
     });
+
+    it('удаляет старых пользователей при миграции и сохраняет новые продукты', () => {
+      const path = join(dir, 'old.db');
+      const old = new Database(path);
+      old.exec(readFileSync(new URL('../migrations/001_init.sql', import.meta.url), 'utf8'));
+      old.exec("CREATE TABLE schema_version (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL); INSERT INTO schema_version VALUES (1, '001_init.sql', '2026-01-01'); INSERT INTO users (first_name, last_name, name_key, color, created_at) VALUES ('Иван', 'Иванов', 'иван иванов', '#123456', '2026-01-01'); INSERT INTO vacation_days VALUES (1, '2027-01-01');");
+      old.close();
+      const migrated = openDb(path);
+      expect(migrated.prepare('SELECT * FROM users').all()).toHaveLength(0);
+      expect(migrated.prepare('SELECT * FROM vacation_days').all()).toHaveLength(0);
+      migrated.prepare('INSERT INTO products (name, manager, color) VALUES (?, ?, ?)').run('Продукт', 'Руководитель', '#123456');
+      migrated.close();
+      const reopened = openDb(path);
+      expect(reopened.prepare('SELECT name FROM products').get()).toEqual({ name: 'Продукт' });
+      reopened.close();
+    });
   });
 });
 
@@ -103,29 +123,21 @@ describe('лимит тела запроса', () => {
   });
 
   it('отвергает тело больше 64 КБ', async () => {
-    const created = await login(ctx.app, 'Иван', 'Петров');
     const response = await ctx.app.inject({
-      method: 'PUT',
-      url: `/api/users/${created.user.id}/days`,
-      payload: { dates: Array.from({ length: 6000 }, () => '2027-01-01'), version: 0 },
+      method: 'POST',
+      url: '/api/products',
+      payload: { name: 'Продукт', manager: 'Руководитель', color: '#123456', description: 'x'.repeat(70000) },
     });
     expect(response.statusCode).toBe(413);
     expect(errorOf(response).message).toMatch(/[а-яА-Я]/);
   });
 
-  it('принимает полный год дат (366 строк заметно меньше лимита)', async () => {
-    const created = await login(ctx.app, 'Иван', 'Петров');
-    const dates: string[] = [];
-    for (let month = 1; month <= 12; month += 1) {
-      for (let day = 1; day <= 28; day += 1) {
-        dates.push(`2027-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
-      }
-    }
+  it('принимает допустимое описание продукта', async () => {
     const response = await ctx.app.inject({
-      method: 'PUT',
-      url: `/api/users/${created.user.id}/days`,
-      payload: { dates, version: 0 },
+      method: 'POST',
+      url: '/api/products',
+      payload: { name: 'Продукт', manager: 'Руководитель', color: '#123456', description: 'x'.repeat(10000) },
     });
-    expect(response.statusCode).toBe(200);
+    expect(response.statusCode).toBe(201);
   });
 });
