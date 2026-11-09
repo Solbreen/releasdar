@@ -123,7 +123,7 @@ describe('лимит тела запроса', () => {
   });
 
   it('отвергает тело больше 64 КБ', async () => {
-    const response = await ctx.app.inject({
+    const response = await ctx.app.inject({ headers: { cookie: ctx.cookie },
       method: 'POST',
       url: '/api/products',
       payload: { name: 'Продукт', manager: 'Руководитель', color: '#123456', description: 'x'.repeat(70000) },
@@ -133,7 +133,7 @@ describe('лимит тела запроса', () => {
   });
 
   it('принимает допустимое описание продукта', async () => {
-    const response = await ctx.app.inject({
+    const response = await ctx.app.inject({ headers: { cookie: ctx.cookie },
       method: 'POST',
       url: '/api/products',
       payload: { name: 'Продукт', manager: 'Руководитель', color: '#123456', description: 'x'.repeat(10000) },

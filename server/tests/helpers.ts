@@ -8,6 +8,7 @@ export const YEAR = 2027;
 export interface TestContext {
   app: FastifyInstance;
   db: Db;
+  cookie: string;
 }
 
 /** Поднимает приложение на базе в памяти. */
@@ -15,9 +16,10 @@ export async function createTestApp(year = YEAR): Promise<TestContext> {
   const db = openDb(':memory:');
   const app = await buildApp({
     db,
-    config: { port: 0, dbPath: ':memory:', vacationYear: year },
+    config: { port: 0, dbPath: ':memory:', vacationYear: year, adminLogin: 'admin', adminPassword: 'test-password' },
   });
-  return { app, db };
+  const response = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { login: 'admin', password: 'test-password' } });
+  return { app, db, cookie: String(response.headers['set-cookie']).split(';')[0]! };
 }
 
 export async function closeTestApp(ctx: TestContext): Promise<void> {

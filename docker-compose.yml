@@ -6,6 +6,8 @@ services:
       PORT: 3000
       DB_PATH: /app/data/vacations.db
       VACATION_YEAR: 2027
+      ADMIN_LOGIN: ${ADMIN_LOGIN:?Укажите ADMIN_LOGIN в .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Укажите ADMIN_PASSWORD в .env}
     volumes:
       - ./data:/app/data
     healthcheck:

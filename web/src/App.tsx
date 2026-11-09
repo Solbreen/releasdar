@@ -15,11 +15,12 @@ const colors = ['#3a86ff', '#e76f51', '#2a9d8f', '#9b5de5', '#c77e16', '#d64987'
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, options);
+  if (response.status === 401) window.dispatchEvent(new Event('session-expired'));
   if (!response.ok) throw new Error('Не удалось сохранить или загрузить данные. Попробуйте ещё раз.');
   return response.json() as Promise<T>;
 }
 
-export function App(): JSX.Element {
+function CalendarApp({ onLogout }: { onLogout: () => void }): JSX.Element {
   const [year, setYear] = useState(Math.max(2026, Math.min(2036, new Date().getFullYear())));
   const [products, setProducts] = useState<Product[]>([]);
   const [releases, setReleases] = useState<Release[]>([]);
@@ -67,12 +68,12 @@ export function App(): JSX.Element {
 
   return <div className={layout.app}>
     <header className={header.header}>
-      <h1 className={header.title}>Календарь релизов · {year}</h1>
+      <h1 className={header.title}>Календарь релизов · <select aria-label="Год" className="input yearSelect" value={year} onChange={event => setYear(Number(event.target.value))}>
+        {Array.from({ length: 11 }, (_, i) => <option key={i}>{2026 + i}</option>)}
+      </select></h1>
       <div className={header.user}>
-        <label>Год <select className="input yearSelect" value={year} onChange={event => setYear(Number(event.target.value))}>
-          {Array.from({ length: 11 }, (_, i) => <option key={i}>{2026 + i}</option>)}
-        </select></label>
         <button className="button button--primary" onClick={() => setRelease({ productId: '', date: '', description: '' })}>Создать релиз</button>
+        <button className="button" onClick={onLogout}>Выйти</button>
       </div>
     </header>
     {error && <div className="releaseError" role="alert">{error} <button className="button" onClick={() => void refresh()}>Обновить</button></div>}
@@ -128,4 +129,33 @@ export function App(): JSX.Element {
       </form>
     </Modal>}
   </div>;
+}
+
+export function App(): JSX.Element {
+  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
+  const [login, setLogin] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  useEffect(() => {
+    const expired = (): void => { setAuthenticated(false); setError('Сессия завершилась. Войдите снова.'); };
+    window.addEventListener('session-expired', expired);
+    fetch('/api/auth/me').then(response => setAuthenticated(response.ok)).catch(() => { setError('Не удалось подключиться к серверу'); setAuthenticated(false); });
+    return () => window.removeEventListener('session-expired', expired);
+  }, []);
+  const submit = async (event: FormEvent): Promise<void> => {
+    event.preventDefault(); setError('');
+    try {
+      const response = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ login, password }) });
+      if (!response.ok) { setError(response.status === 429 ? 'Слишком много попыток. Попробуйте позже.' : 'Неверный логин или пароль'); return; }
+      setPassword(''); setAuthenticated(true);
+    } catch { setError('Не удалось подключиться к серверу'); }
+  };
+  if (authenticated === null) return <p>Загрузка…</p>;
+  if (authenticated) return <CalendarApp onLogout={() => { void fetch('/api/auth/logout', { method: 'POST' }).finally(() => setAuthenticated(false)); }} />;
+  return <Modal title="Вход"><form className="releaseForm" onSubmit={event => void submit(event)}>
+    <label>Логин <input className="input" autoComplete="username" required value={login} onChange={event => setLogin(event.target.value)} /></label>
+    <label>Пароль <input className="input" type="password" autoComplete="current-password" required value={password} onChange={event => setPassword(event.target.value)} /></label>
+    {error && <p className="fieldError" role="alert">{error}</p>}
+    <button className="button button--primary">Войти</button>
+  </form></Modal>;
 }

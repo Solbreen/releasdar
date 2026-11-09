@@ -1,6 +1,10 @@
 import { loadConfig } from './config.js';
 import { openDb } from './db.js';
 import { buildApp } from './app.js';
+import { loadEnvFile } from 'node:process';
+import { existsSync } from 'node:fs';
+
+if (existsSync('.env')) loadEnvFile('.env');
 
 const config = loadConfig();
 const db = openDb(config.dbPath);

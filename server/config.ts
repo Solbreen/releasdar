@@ -2,6 +2,8 @@ export interface AppConfig {
   port: number;
   dbPath: string;
   vacationYear: number;
+  adminLogin: string;
+  adminPassword: string;
 }
 
 function intFromEnv(name: string, fallback: number): number {
@@ -15,7 +17,11 @@ function intFromEnv(name: string, fallback: number): number {
 }
 
 export function loadConfig(): AppConfig {
+  const adminLogin = process.env.ADMIN_LOGIN?.trim();
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!adminLogin || !adminPassword?.trim()) throw new Error('Укажите ADMIN_LOGIN и ADMIN_PASSWORD в .env');
   return {
+    adminLogin, adminPassword,
     port: intFromEnv('PORT', 3000),
     dbPath: process.env.DB_PATH?.trim() || './data/vacations.db',
     vacationYear: intFromEnv('VACATION_YEAR', 2027),

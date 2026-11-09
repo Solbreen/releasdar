@@ -3,3 +3,6 @@ dist/
 data/
 backups/
 *.log
+.env
+.env.*
+!.env.example

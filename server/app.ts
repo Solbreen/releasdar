@@ -5,6 +5,7 @@ import { ApiError } from './errors.js';
 import { registerReleaseRoutes } from './routes/releases.js';
 import { registerHealthRoutes } from './routes/health.js';
 import { registerStatic } from './static.js';
+import { registerAuth } from './auth.js';
 
 export interface AppDeps {
   db: Db;
@@ -56,6 +57,7 @@ export async function buildApp(
     });
   });
 
+  registerAuth(app, deps.config.adminLogin, deps.config.adminPassword);
   registerHealthRoutes(app);
   registerReleaseRoutes(app, deps);
 
