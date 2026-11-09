@@ -7,8 +7,9 @@ describe('общий календарь релизов', () => {
 
   it('сохраняет продукты и релизы, проверяет обязательные поля и даты', async () => {
     ctx = await createTestApp();
-    const product = { name: 'Сервис', manager: 'Иван Иванов', description: 'Описание', color: '#3a86ff' };
-    const invalid = await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'POST', url: '/api/products', payload: { ...product, manager: '  ' } });
+    ctx.db.prepare("INSERT INTO accounts (login, login_key, password_hash, role, created_at, full_name) VALUES ('rp', 'rp', 'x', 'rp', '2026', 'Иван Иванов')").run();
+    const product = { name: 'Сервис', managerId: 1, description: 'Описание', color: '#3a86ff' };
+    const invalid = await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'POST', url: '/api/products', payload: { ...product, managerId: 0 } });
     expect(invalid.statusCode).toBe(400);
     const created = await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'POST', url: '/api/products', payload: product });
     expect(created.statusCode).toBe(201);
@@ -27,6 +28,10 @@ describe('общий календарь релизов', () => {
     expect((await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'POST', url: '/api/releases', payload: { productId: id, date: '2037-01-01', description: '' } })).statusCode).toBe(400);
     expect((await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'GET', url: '/api/products' })).json()[0].name).toBe('Новый сервис');
     expect((await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'GET', url: '/api/releases' })).json().map((r: {date: string}) => r.date)).toEqual(['2036-12-31', '2026-01-01']);
+    const releaseId = (await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'GET', url: '/api/releases' })).json()[0].id;
+    expect((await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'DELETE', url: `/api/releases/${releaseId}` })).statusCode).toBe(200);
+    expect((await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'DELETE', url: `/api/products/${id}` })).statusCode).toBe(200);
+    expect((await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'GET', url: '/api/releases' })).json()).toEqual([]);
     expect((await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'POST', url: '/api/users', payload: {} })).statusCode).toBe(404);
   });
 });

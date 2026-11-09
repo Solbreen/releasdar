@@ -30,6 +30,7 @@ export function registerAuth(app: FastifyInstance, login: string, password: stri
     const user = current(request);
     if (!user) return reply.code(401).send({ error: 'Требуется вход' });
     if (path.startsWith('/api/accounts') && user.role !== 'admin') return reply.code(403).send({ error: 'Недостаточно прав' });
+    if (request.method === 'DELETE' && (path.startsWith('/api/products/') || path.startsWith('/api/releases/')) && user.role !== 'admin') return reply.code(403).send({ error: 'Недостаточно прав' });
     if ((path === '/api/products' || path.startsWith('/api/products/') || path === '/api/releases') && request.method !== 'GET' && request.method !== 'HEAD' && user.role === 'devops') return reply.code(403).send({ error: 'Недостаточно прав' });
   });
   app.post('/api/auth/login', { bodyLimit: 4096 }, async (request, reply) => {
@@ -51,6 +52,7 @@ export function registerAuth(app: FastifyInstance, login: string, password: stri
   app.get('/api/auth/me', (request) => current(request));
   app.post('/api/auth/logout', (request, reply) => { sessions.delete(cookie(request)); reply.header('Set-Cookie', 'session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0'); return { ok: true }; });
   app.get('/api/accounts', () => db.prepare('SELECT id, login, role, full_name AS fullName FROM accounts ORDER BY id').all());
+  app.get('/api/project-managers', () => db.prepare("SELECT id, full_name AS fullName FROM accounts WHERE role = 'rp' ORDER BY full_name, id").all());
   app.delete<{ Params: { id: string } }>('/api/accounts/:id', (request, reply) => {
     const id = Number(request.params.id);
     if (!Number.isSafeInteger(id) || id < 1) return reply.code(400).send({ error: 'Некорректный идентификатор' });

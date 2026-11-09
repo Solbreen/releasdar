@@ -36,7 +36,7 @@ it('администратор создаёт пользователей, рол
     expect((await app.inject({ method: 'GET', url: '/api/products', headers: { cookie: user } })).statusCode).toBe(401);
     expect((await app.inject({ method: 'POST', url: '/api/auth/login', payload: { login: 'Иван', password: 'password1' } })).statusCode).toBe(401);
     const rp = await signin('ИВАН', 'newpassword');
-    expect((await app.inject({ method: 'POST', url: '/api/products', headers: { cookie: rp }, payload: { name: 'Продукт', manager: 'Руководитель', description: '', color: '#123456' } })).statusCode).toBe(201);
+    expect((await app.inject({ method: 'POST', url: '/api/products', headers: { cookie: rp }, payload: { name: 'Продукт', managerId: created.json().id, description: '', color: '#123456' } })).statusCode).toBe(201);
     const accountId = created.json().id;
     expect((await app.inject({ method: 'DELETE', url: `/api/accounts/${accountId}`, headers: { cookie: rp } })).statusCode).toBe(403);
     expect((await app.inject({ method: 'DELETE', url: `/api/accounts/${accountId}`, headers: { cookie: admin } })).statusCode).toBe(200);

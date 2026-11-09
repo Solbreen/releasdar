@@ -12,3 +12,7 @@
 .releaseError { padding: 10px 20px; color: var(--danger); }
 .accountRow { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .accountActions { display: flex; gap: 6px; margin-left: auto; }
+.themeToggle { position: fixed; bottom: 16px; left: 16px; z-index: 10; box-shadow: var(--shadow); }
+.statusBadge { display: inline-block; flex: none; border-radius: 8px; padding: 6px 9px; font-size: 12px; font-weight: 600; }
+.statusBadge.active { color: #176b52; background: #d6f4e9; }
+.statusBadge.archived { color: #58687d; background: #e9edf2; }

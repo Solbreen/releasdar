@@ -133,10 +133,11 @@ describe('лимит тела запроса', () => {
   });
 
   it('принимает допустимое описание продукта', async () => {
+    ctx.db.prepare("INSERT INTO accounts (login, login_key, password_hash, role, created_at, full_name) VALUES ('rp', 'rp', 'x', 'rp', '2026', 'Руководитель')").run();
     const response = await ctx.app.inject({ headers: { cookie: ctx.cookie },
       method: 'POST',
       url: '/api/products',
-      payload: { name: 'Продукт', manager: 'Руководитель', color: '#123456', description: 'x'.repeat(10000) },
+      payload: { name: 'Продукт', managerId: 1, color: '#123456', description: 'x'.repeat(10000) },
     });
     expect(response.statusCode).toBe(201);
   });

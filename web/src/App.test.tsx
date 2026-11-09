@@ -5,11 +5,12 @@ import { App } from './App.js';
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 it('создаёт релиз для выбранного дня и показывает его в карточке продукта', async () => {
-  const products = [{ id: 1, name: 'Портал', manager: 'Иван Иванов', description: '', color: '#3a86ff' }];
+  const products = [{ id: 1, name: 'Портал', manager: 'Иван Иванов', managerId: 1, description: '', color: '#3a86ff', status: 'active' }];
   const releases: { id: number; productId: number; date: string; description: string }[] = [];
   vi.stubGlobal('fetch', vi.fn(async (url: string, options?: RequestInit) => {
     if (url === '/api/auth/me') return { ok: true, json: async () => ({ role: 'admin' }) };
     if (url === '/api/products') return { ok: true, json: async () => products };
+    if (url === '/api/project-managers') return { ok: true, json: async () => [{ id: 1, fullName: 'Иван Иванов' }] };
     if (options?.method === 'POST') {
       releases.push({ id: 1, ...JSON.parse(options.body as string) });
       return { ok: true, json: async () => ({ id: 1 }) };

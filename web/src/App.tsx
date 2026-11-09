@@ -8,7 +8,7 @@ import side from './components/UserList.module.css';
 import header from './components/Header.module.css';
 import './release.css';
 
-type Product = { id: number; name: string; manager: string; description: string; color: string; status: 'active' | 'archived' };
+type Product = { id: number; name: string; manager: string; managerId: number | null; description: string; color: string; status: 'active' | 'archived' };
 type Release = { id: number; productId: number; date: string; description: string };
 type ProductForm = Omit<Product, 'id'> & { id?: number };
 type ReleaseForm = { productId: string; date: string; description: string };
@@ -21,7 +21,8 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-function CalendarApp({ onLogout, role }: { onLogout: () => void; role: 'admin' | 'rp' | 'devops' }): JSX.Element {
+function CalendarApp({ onLogout, user }: { onLogout: () => void; user: { role: 'admin' | 'rp' | 'devops'; id?: number } }): JSX.Element {
+  const { role } = user;
   const [year, setYear] = useState(Math.max(2026, Math.min(2036, new Date().getFullYear())));
   const [products, setProducts] = useState<Product[]>([]);
   const [releases, setReleases] = useState<Release[]>([]);
@@ -32,13 +33,21 @@ function CalendarApp({ onLogout, role }: { onLogout: () => void; role: 'admin' |
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [showAccounts, setShowAccounts] = useState(false);
+  const [managers, setManagers] = useState<{ id: number; fullName: string }[]>([]);
+  const [filter, setFilter] = useState<'active' | 'archived' | 'all'>('active');
+  const visibleProducts = products.filter(p => filter === 'all' || p.status === filter);
+  const visibleReleases = releases.filter(r => visibleProducts.some(p => p.id === r.productId));
   const canCreate = role !== 'devops';
 
   const refresh = async (): Promise<void> => {
     try {
-      const [p, r] = await Promise.all([request<Product[]>('/api/products'), request<Release[]>('/api/releases')]);
-      setProducts(p); setReleases(r); setError('');
+      const [p, r, m] = await Promise.all([request<Product[]>('/api/products'), request<Release[]>('/api/releases'), request<{ id: number; fullName: string }[]>('/api/project-managers')]);
+      setProducts(p); setReleases(r); setManagers(m); setError('');
     } catch { setError('Не удалось загрузить данные. Проверьте соединение.'); }
+  };
+  const remove = async (kind: 'products' | 'releases', id: number): Promise<void> => {
+    if (!window.confirm(kind === 'products' ? 'Удалить продукт и все его релизы?' : 'Удалить релиз?')) return;
+    try { await request(`/api/${kind}/${id}`, { method: 'DELETE' }); if (kind === 'products') setProduct(null); await refresh(); } catch (err) { setError((err as Error).message); }
   };
   useEffect(() => {
     void refresh();
@@ -88,36 +97,37 @@ function CalendarApp({ onLogout, role }: { onLogout: () => void; role: 'admin' |
             <h3 className={cal.monthTitle}>{month.title}</h3>
             <div className={cal.weekdays}>{WEEKDAY_NAMES_RU.map((name, i) => <span className={i >= 5 ? cal.weekdayWeekend : cal.weekday} key={name}>{name}</span>)}</div>
             <div className={cal.grid}>{month.weeks.flat().map((cell, i) => cell ?
-              <button key={cell.date} className={`${cal.day} ${cell.weekend ? cal.dayWeekend : ''}`} onClick={() => setDay(cell.date)} aria-label={`${cell.date}, релизов: ${releases.filter(r => r.date === cell.date).length}`}>
+              <button key={cell.date} className={`${cal.day} ${cell.weekend ? cal.dayWeekend : ''}`} onClick={() => setDay(cell.date)} aria-label={`${cell.date}, релизов: ${visibleReleases.filter(r => r.date === cell.date).length}`}>
                 <span>{cell.day}</span>
-                <span className={cal.marks}>{products.filter(p => !hidden.includes(p.id) && releases.some(r => r.productId === p.id && r.date === cell.date)).map(p => <span className={cal.mark} style={{ background: p.color }} key={p.id} />)}</span>
+                <span className={cal.marks}>{visibleProducts.filter(p => !hidden.includes(p.id) && releases.some(r => r.productId === p.id && r.date === cell.date)).map(p => <span className={cal.mark} style={{ background: p.color }} key={p.id} />)}</span>
               </button> : <span className={cal.empty} key={i} />)}</div>
           </section>)}
         </div>
       </main>
       <aside className={side.panel}>
-        {canCreate && <button className="button button--primary productCreate" onClick={() => setProduct({ name: '', manager: '', description: '', color: colors[products.length % colors.length]!, status: 'active' })}>Создать продукт</button>}
+        {canCreate && <button className="button button--primary productCreate" onClick={() => setProduct({ name: '', manager: '', managerId: role === 'rp' ? user.id ?? null : null, description: '', color: colors[products.length % colors.length]!, status: 'active' })}>Создать продукт</button>}
         <h2 className={side.heading}>Продукты</h2>
-        {products.length === 0 && <p className={side.emptyHint}>Пока нет продуктов</p>}
-        {products.map(p => <div className={side.row} key={p.id}>
+        <label>Статус <select className="input" value={filter} onChange={event => setFilter(event.target.value as typeof filter)}><option value="active">Активен</option><option value="archived">Архив</option><option value="all">Все</option></select></label>
+        {visibleProducts.length === 0 && <p className={side.emptyHint}>Нет продуктов</p>}
+        {visibleProducts.map(p => <div className={side.row} key={p.id}>
           <button className="productIndicator" aria-label={`${hidden.includes(p.id) ? 'Показать' : 'Скрыть'} ${p.name} на календаре`} aria-pressed={!hidden.includes(p.id)} style={{ background: p.color, opacity: hidden.includes(p.id) ? .35 : 1 }} onClick={() => setHidden(hidden.includes(p.id) ? hidden.filter(id => id !== p.id) : [...hidden, p.id])} />
-          <button className={side.main} onClick={() => setProduct(p)}>{p.name} {p.status === 'archived' && '· Архив'}</button>
+          <button className={side.main} onClick={() => setProduct(p)}>{p.name}</button><span className={`statusBadge ${p.status}`}>{p.status === 'active' ? 'Активен' : 'Архив'}</span>
         </div>)}
       </aside>
     </div>
     {day && !release && <Modal title={`Релизы · ${formatHumanDate(day)} ${day.slice(0, 4)}`} onClose={() => setDay(null)} footer={<><button className="button" onClick={() => setDay(null)}>Закрыть</button>{canCreate && <button className="button button--primary" onClick={() => setRelease({ productId: '', date: day, description: '' })}>Создать релиз</button>}</>}>
-      <div className="releaseFeed">{releases.filter(r => r.date === day).map(r => <div className="releaseItem" key={r.id}><strong>{products.find(p => p.id === r.productId)?.name}</strong><p>{r.description || 'Без описания'}</p></div>)}
-        {!releases.some(r => r.date === day) && <p>На этот день релизов нет.</p>}
+      <div className="releaseFeed">{visibleReleases.filter(r => r.date === day).map(r => <div className="releaseItem" key={r.id}><strong>{products.find(p => p.id === r.productId)?.name}</strong><p>{r.description || 'Без описания'}</p>{role === 'admin' && <button className="button button--danger" onClick={() => void remove('releases', r.id)}>Удалить релиз</button>}</div>)}
+        {!visibleReleases.some(r => r.date === day) && <p>На этот день релизов нет.</p>}
       </div>
     </Modal>}
-    {product && <Modal title={product.id ? 'Карточка продукта' : 'Новый продукт'} onClose={() => setProduct(null)} footer={<><button type="button" className="button" onClick={() => setProduct(null)}>Закрыть</button>{canCreate && <button form="product-form" className="button button--primary" disabled={saving || !product.name.trim() || !product.manager.trim()}>Сохранить</button>}</>}>
+    {product && <Modal title={product.id ? 'Карточка продукта' : 'Новый продукт'} headerAction={<span className={`statusBadge ${product.status}`}>{product.status === 'active' ? 'Активен' : 'Архив'}</span>} onClose={() => setProduct(null)} footer={<>{role === 'admin' && product.id && <button type="button" className="button button--danger" onClick={() => void remove('products', product.id!)}>Удалить</button>}<button type="button" className="button" onClick={() => setProduct(null)}>Закрыть</button>{canCreate && <button form="product-form" className="button button--primary" disabled={saving || !product.name.trim() || !product.managerId}>Сохранить</button>}</>}>
       <form id="product-form" className="releaseForm" onSubmit={event => void saveProduct(event)}>
         <label>Название продукта <input className="input" disabled={!canCreate} required maxLength={200} value={product.name} onChange={event => setProduct({ ...product, name: event.target.value })} /></label>
-        <label>ФИО руководителя проекта <input className="input" disabled={!canCreate} required maxLength={200} value={product.manager} onChange={event => setProduct({ ...product, manager: event.target.value })} /></label>
+        <label>Ответственный <select className="input" disabled={!canCreate} required value={product.managerId ?? ''} onChange={event => setProduct({ ...product, managerId: Number(event.target.value) || null })}><option value="">Выберите РП</option>{product.managerId && !managers.some(m => m.id === product.managerId) && <option value={product.managerId}>Недоступный пользователь — {product.manager}</option>}{managers.map(m => <option key={m.id} value={m.id}>{m.fullName}</option>)}</select></label>
         <label>Описание <textarea className="input" disabled={!canCreate} maxLength={10000} value={product.description} onChange={event => setProduct({ ...product, description: event.target.value })} /></label>
         <label>Статус <select className="input" disabled={!canCreate || !product.id} value={product.status} onChange={event => setProduct({ ...product, status: event.target.value as Product['status'] })}><option value="active">Активен</option><option value="archived">Архив</option></select></label>
         <h3>Релизы</h3>
-        <div className="releaseFeed">{releases.filter(r => r.productId === product.id).map(r => <div className="releaseItem" key={r.id}><strong>{r.date}</strong><p>{r.description || 'Без описания'}</p></div>)}</div>
+        <div className="releaseFeed">{releases.filter(r => r.productId === product.id).map(r => <div className="releaseItem" key={r.id}><strong>{r.date}</strong><p>{r.description || 'Без описания'}</p>{role === 'admin' && <button type="button" className="button button--danger" onClick={() => void remove('releases', r.id)}>Удалить релиз</button>}</div>)}</div>
         {error && <p className="fieldError" role="alert">{error}</p>}
       </form>
     </Modal>}
@@ -135,14 +145,19 @@ function CalendarApp({ onLogout, role }: { onLogout: () => void; role: 'admin' |
 }
 
 export function App(): JSX.Element {
-  const [authenticated, setAuthenticated] = useState<'admin' | 'rp' | 'devops' | false | null>(null);
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('theme');
+    return saved === 'dark' || saved === 'light' ? saved : (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  });
+  useEffect(() => { document.documentElement.dataset.theme = theme; document.documentElement.style.colorScheme = theme; localStorage.setItem('theme', theme); }, [theme]);
+  const [authenticated, setAuthenticated] = useState<{ role: 'admin' | 'rp' | 'devops'; id?: number } | false | null>(null);
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   useEffect(() => {
     const expired = (): void => { setAuthenticated(false); setError('Сессия завершилась. Войдите снова.'); };
     window.addEventListener('session-expired', expired);
-    fetch('/api/auth/me').then(async response => setAuthenticated(response.ok ? (await response.json() as { role: 'admin' | 'rp' | 'devops' }).role : false)).catch(() => { setError('Не удалось подключиться к серверу'); setAuthenticated(false); });
+    fetch('/api/auth/me').then(async response => setAuthenticated(response.ok ? await response.json() as { role: 'admin' | 'rp' | 'devops'; id?: number } : false)).catch(() => { setError('Не удалось подключиться к серверу'); setAuthenticated(false); });
     return () => window.removeEventListener('session-expired', expired);
   }, []);
   const submit = async (event: FormEvent): Promise<void> => {
@@ -150,11 +165,11 @@ export function App(): JSX.Element {
     try {
       const response = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ login, password }) });
       if (!response.ok) { setError(response.status === 429 ? 'Слишком много попыток. Попробуйте позже.' : 'Неверный логин или пароль'); return; }
-      const user = await response.json() as { role: 'admin' | 'rp' | 'devops' }; setPassword(''); setAuthenticated(user.role);
+      const user = await response.json() as { role: 'admin' | 'rp' | 'devops'; id?: number }; setPassword(''); setAuthenticated(user);
     } catch { setError('Не удалось подключиться к серверу'); }
   };
   if (authenticated === null) return <p>Загрузка…</p>;
-  if (authenticated) return <CalendarApp role={authenticated} onLogout={() => { void fetch('/api/auth/logout', { method: 'POST' }).finally(() => setAuthenticated(false)); }} />;
+  if (authenticated) return <><button type="button" className="button themeToggle" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>{theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}</button><CalendarApp user={authenticated} onLogout={() => { void fetch('/api/auth/logout', { method: 'POST' }).finally(() => setAuthenticated(false)); }} /></>;
   return <Modal title="Вход" footer={<button form="login-form" className="button button--primary">Войти</button>}><form id="login-form" className="releaseForm" onSubmit={event => void submit(event)}>
     <label>Логин <input className="input" autoComplete="username" required value={login} onChange={event => setLogin(event.target.value)} /></label>
     <label>Пароль <input className="input" type="password" autoComplete="current-password" required value={password} onChange={event => setPassword(event.target.value)} /></label>
