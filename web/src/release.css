@@ -10,3 +10,5 @@
 .releaseItem { padding: 10px; border: 1px solid var(--border); border-radius: var(--radius); }
 .releaseItem p { margin: 4px 0 0; white-space: pre-wrap; }
 .releaseError { padding: 10px 20px; color: var(--danger); }
+.accountRow { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.accountActions { display: flex; gap: 6px; margin-left: auto; }

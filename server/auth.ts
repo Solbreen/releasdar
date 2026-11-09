@@ -12,8 +12,8 @@ const hash = (value: string): Buffer => createHash('sha256').update(value).diges
 const equal = (a: string, b: string): boolean => timingSafeEqual(hash(a), hash(b));
 const makePassword = (password: string): string => { const salt = randomBytes(16).toString('hex'); return `${salt}:${scryptSync(password, salt, 64).toString('hex')}`; };
 const verifyPassword = (password: string, stored: string): boolean => { const [salt, hex] = stored.split(':'); if (!salt || !hex || !/^[a-f0-9]{128}$/.test(hex)) return false; return timingSafeEqual(scryptSync(password, salt, 64), Buffer.from(hex, 'hex')); };
-const accountSchema = z.object({ login: z.string().trim().min(1).max(100), password: z.string().min(8).max(256), role: z.enum(['rp', 'devops']) });
-const updateSchema = z.object({ role: z.enum(['rp', 'devops']), password: z.string().min(8).max(256).optional() });
+const accountSchema = z.object({ login: z.string().trim().min(1).max(100), fullName: z.string().trim().min(1).max(200), password: z.string().min(8).max(256), role: z.enum(['rp', 'devops']) });
+const updateSchema = z.object({ fullName: z.string().trim().min(1).max(200), role: z.enum(['rp', 'devops']), password: z.string().min(8).max(256).optional() });
 
 export function registerAuth(app: FastifyInstance, login: string, password: string, db: Db): void {
   const sessions = new Map<string, { expires: number; identity: Identity }>();
@@ -50,7 +50,7 @@ export function registerAuth(app: FastifyInstance, login: string, password: stri
   });
   app.get('/api/auth/me', (request) => current(request));
   app.post('/api/auth/logout', (request, reply) => { sessions.delete(cookie(request)); reply.header('Set-Cookie', 'session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0'); return { ok: true }; });
-  app.get('/api/accounts', () => db.prepare('SELECT id, login, role FROM accounts ORDER BY id').all());
+  app.get('/api/accounts', () => db.prepare('SELECT id, login, role, full_name AS fullName FROM accounts ORDER BY id').all());
   app.delete<{ Params: { id: string } }>('/api/accounts/:id', (request, reply) => {
     const id = Number(request.params.id);
     if (!Number.isSafeInteger(id) || id < 1) return reply.code(400).send({ error: 'Некорректный идентификатор' });
@@ -63,15 +63,15 @@ export function registerAuth(app: FastifyInstance, login: string, password: stri
     const parsed = accountSchema.safeParse(request.body); if (!parsed.success) return reply.code(400).send({ error: 'Укажите логин, роль и пароль не менее 8 символов' });
     const data = parsed.data; const normalized = key(data.login);
     if (normalized === key(login) || db.prepare('SELECT id FROM accounts WHERE login_key = ?').get(normalized)) return reply.code(409).send({ error: 'Логин уже занят' });
-    const result = db.prepare('INSERT INTO accounts (login, login_key, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)').run(data.login, normalized, makePassword(data.password), data.role, new Date().toISOString());
+    const result = db.prepare('INSERT INTO accounts (login, login_key, password_hash, role, created_at, full_name) VALUES (?, ?, ?, ?, ?, ?)').run(data.login, normalized, makePassword(data.password), data.role, new Date().toISOString(), data.fullName);
     return reply.code(201).send({ id: result.lastInsertRowid });
   });
   app.patch<{ Params: { id: string } }>('/api/accounts/:id', (request, reply) => {
     const parsed = updateSchema.safeParse(request.body); if (!parsed.success) return reply.code(400).send({ error: 'Некорректная роль или пароль' });
     const id = Number(request.params.id); if (!Number.isSafeInteger(id) || id < 1) return reply.code(400).send({ error: 'Некорректный идентификатор' });
     if (!db.prepare('SELECT id FROM accounts WHERE id = ?').get(id)) return reply.code(404).send({ error: 'Пользователь не найден' });
-    if (parsed.data.password !== undefined) db.prepare('UPDATE accounts SET role=?, password_hash=? WHERE id=?').run(parsed.data.role, makePassword(parsed.data.password), id);
-    else db.prepare('UPDATE accounts SET role=? WHERE id=?').run(parsed.data.role, id);
+    if (parsed.data.password !== undefined) db.prepare('UPDATE accounts SET role=?, password_hash=?, full_name=? WHERE id=?').run(parsed.data.role, makePassword(parsed.data.password), parsed.data.fullName, id);
+    else db.prepare('UPDATE accounts SET role=?, full_name=? WHERE id=?').run(parsed.data.role, parsed.data.fullName, id);
     invalidate(id); return { ok: true };
   });
 }
