@@ -8,6 +8,7 @@ it('создаёт релиз для выбранного дня и показы
   const products = [{ id: 1, name: 'Портал', manager: 'Иван Иванов', description: '', color: '#3a86ff' }];
   const releases: { id: number; productId: number; date: string; description: string }[] = [];
   vi.stubGlobal('fetch', vi.fn(async (url: string, options?: RequestInit) => {
+    if (url === '/api/auth/me') return { ok: true, json: async () => ({ role: 'admin' }) };
     if (url === '/api/products') return { ok: true, json: async () => products };
     if (options?.method === 'POST') {
       releases.push({ id: 1, ...JSON.parse(options.body as string) });

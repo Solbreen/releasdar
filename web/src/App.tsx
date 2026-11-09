@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { buildYear, WEEKDAY_NAMES_RU, formatHumanDate } from './calendar-model.js';
 import { Modal } from './components/Modal.js';
+import { Accounts } from './components/Accounts.js';
 import layout from './App.module.css';
 import cal from './components/Calendar.module.css';
 import side from './components/UserList.module.css';
@@ -20,7 +21,7 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-function CalendarApp({ onLogout }: { onLogout: () => void }): JSX.Element {
+function CalendarApp({ onLogout, role }: { onLogout: () => void; role: 'admin' | 'rp' | 'devops' }): JSX.Element {
   const [year, setYear] = useState(Math.max(2026, Math.min(2036, new Date().getFullYear())));
   const [products, setProducts] = useState<Product[]>([]);
   const [releases, setReleases] = useState<Release[]>([]);
@@ -30,6 +31,8 @@ function CalendarApp({ onLogout }: { onLogout: () => void }): JSX.Element {
   const [day, setDay] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showAccounts, setShowAccounts] = useState(false);
+  const canCreate = role !== 'devops';
 
   const refresh = async (): Promise<void> => {
     try {
@@ -72,7 +75,8 @@ function CalendarApp({ onLogout }: { onLogout: () => void }): JSX.Element {
         {Array.from({ length: 11 }, (_, i) => <option key={i}>{2026 + i}</option>)}
       </select></h1>
       <div className={header.user}>
-        <button className="button button--primary" onClick={() => setRelease({ productId: '', date: '', description: '' })}>Создать релиз</button>
+        {canCreate && <button className="button button--primary" onClick={() => setRelease({ productId: '', date: '', description: '' })}>Создать релиз</button>}
+        {role === 'admin' && <button className="button" onClick={() => setShowAccounts(true)}>Пользователи</button>}
         <button className="button" onClick={onLogout}>Выйти</button>
       </div>
     </header>
@@ -92,7 +96,7 @@ function CalendarApp({ onLogout }: { onLogout: () => void }): JSX.Element {
         </div>
       </main>
       <aside className={side.panel}>
-        <button className="button button--primary productCreate" onClick={() => setProduct({ name: '', manager: '', description: '', color: colors[products.length % colors.length]! })}>Создать продукт</button>
+        {canCreate && <button className="button button--primary productCreate" onClick={() => setProduct({ name: '', manager: '', description: '', color: colors[products.length % colors.length]! })}>Создать продукт</button>}
         <h2 className={side.heading}>Продукты</h2>
         {products.length === 0 && <p className={side.emptyHint}>Пока нет продуктов</p>}
         {products.map(p => <div className={side.row} key={p.id}>
@@ -104,18 +108,18 @@ function CalendarApp({ onLogout }: { onLogout: () => void }): JSX.Element {
     {day && !release && <Modal title={`Релизы · ${formatHumanDate(day)} ${day.slice(0, 4)}`} onClose={() => setDay(null)}>
       <div className="releaseFeed">{releases.filter(r => r.date === day).map(r => <div className="releaseItem" key={r.id}><strong>{products.find(p => p.id === r.productId)?.name}</strong><p>{r.description || 'Без описания'}</p></div>)}
         {!releases.some(r => r.date === day) && <p>На этот день релизов нет.</p>}
-        <button className="button button--primary" onClick={() => setRelease({ productId: '', date: day, description: '' })}>Создать релиз</button>
+        {canCreate && <button className="button button--primary" onClick={() => setRelease({ productId: '', date: day, description: '' })}>Создать релиз</button>}
       </div>
     </Modal>}
     {product && <Modal title={product.id ? 'Карточка продукта' : 'Новый продукт'} onClose={() => setProduct(null)}>
       <form className="releaseForm" onSubmit={event => void saveProduct(event)}>
-        <label>Название продукта <input className="input" required maxLength={200} value={product.name} onChange={event => setProduct({ ...product, name: event.target.value })} /></label>
-        <label>ФИО руководителя проекта <input className="input" required maxLength={200} value={product.manager} onChange={event => setProduct({ ...product, manager: event.target.value })} /></label>
-        <label>Описание <textarea className="input" maxLength={10000} value={product.description} onChange={event => setProduct({ ...product, description: event.target.value })} /></label>
+        <label>Название продукта <input className="input" disabled={!canCreate} required maxLength={200} value={product.name} onChange={event => setProduct({ ...product, name: event.target.value })} /></label>
+        <label>ФИО руководителя проекта <input className="input" disabled={!canCreate} required maxLength={200} value={product.manager} onChange={event => setProduct({ ...product, manager: event.target.value })} /></label>
+        <label>Описание <textarea className="input" disabled={!canCreate} maxLength={10000} value={product.description} onChange={event => setProduct({ ...product, description: event.target.value })} /></label>
         <h3>Релизы</h3>
         <div className="releaseFeed">{releases.filter(r => r.productId === product.id).map(r => <div className="releaseItem" key={r.id}><strong>{r.date}</strong><p>{r.description || 'Без описания'}</p></div>)}</div>
         {error && <p className="fieldError" role="alert">{error}</p>}
-        <div className="releaseActions"><button type="button" className="button" onClick={() => setProduct(null)}>Закрыть</button><button className="button button--primary" disabled={saving || !product.name.trim() || !product.manager.trim()}>Сохранить</button></div>
+        <div className="releaseActions"><button type="button" className="button" onClick={() => setProduct(null)}>Закрыть</button>{canCreate && <button className="button button--primary" disabled={saving || !product.name.trim() || !product.manager.trim()}>Сохранить</button>}</div>
       </form>
     </Modal>}
     {release && <Modal title="Новый релиз" onClose={() => setRelease(null)}>
@@ -128,18 +132,19 @@ function CalendarApp({ onLogout }: { onLogout: () => void }): JSX.Element {
         <div className="releaseActions"><button type="button" className="button" onClick={() => setRelease(null)}>Закрыть</button><button className="button button--primary" disabled={saving || !release.productId || !release.date}>Сохранить</button></div>
       </form>
     </Modal>}
+    {showAccounts && <Accounts onClose={() => setShowAccounts(false)} />}
   </div>;
 }
 
 export function App(): JSX.Element {
-  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
+  const [authenticated, setAuthenticated] = useState<'admin' | 'rp' | 'devops' | false | null>(null);
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   useEffect(() => {
     const expired = (): void => { setAuthenticated(false); setError('Сессия завершилась. Войдите снова.'); };
     window.addEventListener('session-expired', expired);
-    fetch('/api/auth/me').then(response => setAuthenticated(response.ok)).catch(() => { setError('Не удалось подключиться к серверу'); setAuthenticated(false); });
+    fetch('/api/auth/me').then(async response => setAuthenticated(response.ok ? (await response.json() as { role: 'admin' | 'rp' | 'devops' }).role : false)).catch(() => { setError('Не удалось подключиться к серверу'); setAuthenticated(false); });
     return () => window.removeEventListener('session-expired', expired);
   }, []);
   const submit = async (event: FormEvent): Promise<void> => {
@@ -147,11 +152,11 @@ export function App(): JSX.Element {
     try {
       const response = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ login, password }) });
       if (!response.ok) { setError(response.status === 429 ? 'Слишком много попыток. Попробуйте позже.' : 'Неверный логин или пароль'); return; }
-      setPassword(''); setAuthenticated(true);
+      const user = await response.json() as { role: 'admin' | 'rp' | 'devops' }; setPassword(''); setAuthenticated(user.role);
     } catch { setError('Не удалось подключиться к серверу'); }
   };
   if (authenticated === null) return <p>Загрузка…</p>;
-  if (authenticated) return <CalendarApp onLogout={() => { void fetch('/api/auth/logout', { method: 'POST' }).finally(() => setAuthenticated(false)); }} />;
+  if (authenticated) return <CalendarApp role={authenticated} onLogout={() => { void fetch('/api/auth/logout', { method: 'POST' }).finally(() => setAuthenticated(false)); }} />;
   return <Modal title="Вход"><form className="releaseForm" onSubmit={event => void submit(event)}>
     <label>Логин <input className="input" autoComplete="username" required value={login} onChange={event => setLogin(event.target.value)} /></label>
     <label>Пароль <input className="input" type="password" autoComplete="current-password" required value={password} onChange={event => setPassword(event.target.value)} /></label>

@@ -57,7 +57,7 @@ export async function buildApp(
     });
   });
 
-  registerAuth(app, deps.config.adminLogin, deps.config.adminPassword);
+  registerAuth(app, deps.config.adminLogin, deps.config.adminPassword, deps.db);
   registerHealthRoutes(app);
   registerReleaseRoutes(app, deps);
 

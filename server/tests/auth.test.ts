@@ -16,3 +16,30 @@ it('защищает API, проверяет пароль, регистр лог
     expect((await app.inject({ method: 'GET', url: '/api/products', headers: { cookie } })).statusCode).toBe(401);
   } finally { await app.close(); db.close(); }
 });
+
+it('администратор создаёт пользователей, роли ограничивают действия, смена роли отзывает сессию', async () => {
+  const db = openDb(':memory:');
+  const app = await buildApp({ db, config: { port: 0, dbPath: ':memory:', vacationYear: 2027, adminLogin: 'Admin', adminPassword: 'Secret123' } });
+  const signin = async (login: string, password: string): Promise<string> => { const r = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { login, password } }); expect(r.statusCode).toBe(200); return String(r.headers['set-cookie']).split(';')[0]!; };
+  try {
+    const admin = await signin('admin', 'Secret123');
+    const created = await app.inject({ method: 'POST', url: '/api/accounts', headers: { cookie: admin }, payload: { login: 'Иван', password: 'password1', role: 'devops' } });
+    expect(created.statusCode).toBe(201);
+    expect((await app.inject({ method: 'POST', url: '/api/accounts', headers: { cookie: admin }, payload: { login: 'иван', password: 'password1', role: 'rp' } })).statusCode).toBe(409);
+    const stored = db.prepare('SELECT password_hash FROM accounts').get() as { password_hash: string }; expect(stored.password_hash).not.toContain('password1');
+    const user = await signin('иВАн', 'password1');
+    expect((await app.inject({ method: 'GET', url: '/api/accounts', headers: { cookie: user } })).statusCode).toBe(403);
+    expect((await app.inject({ method: 'POST', url: '/api/products', headers: { cookie: user }, payload: {} })).statusCode).toBe(403);
+    expect((await app.inject({ method: 'PATCH', url: `/api/accounts/${created.json().id}`, headers: { cookie: admin }, payload: { role: 'rp', password: 'newpassword' } })).statusCode).toBe(200);
+    expect((await app.inject({ method: 'GET', url: '/api/products', headers: { cookie: user } })).statusCode).toBe(401);
+    expect((await app.inject({ method: 'POST', url: '/api/auth/login', payload: { login: 'Иван', password: 'password1' } })).statusCode).toBe(401);
+    const rp = await signin('ИВАН', 'newpassword');
+    expect((await app.inject({ method: 'POST', url: '/api/products', headers: { cookie: rp }, payload: { name: 'Продукт', manager: 'Руководитель', description: '', color: '#123456' } })).statusCode).toBe(201);
+    const accountId = created.json().id;
+    expect((await app.inject({ method: 'DELETE', url: `/api/accounts/${accountId}`, headers: { cookie: rp } })).statusCode).toBe(403);
+    expect((await app.inject({ method: 'DELETE', url: `/api/accounts/${accountId}`, headers: { cookie: admin } })).statusCode).toBe(200);
+    expect((await app.inject({ method: 'GET', url: '/api/products', headers: { cookie: rp } })).statusCode).toBe(401);
+    expect((await app.inject({ method: 'POST', url: '/api/auth/login', payload: { login: 'Иван', password: 'newpassword' } })).statusCode).toBe(401);
+    expect((await app.inject({ method: 'DELETE', url: `/api/accounts/${accountId}`, headers: { cookie: admin } })).statusCode).toBe(404);
+  } finally { await app.close(); db.close(); }
+});
