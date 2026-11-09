@@ -18,7 +18,9 @@
   min-height: 120px;
   max-height: calc(100vh - 32px);
   resize: both;
-  overflow: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   padding: 20px;
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -36,6 +38,9 @@
 
 .body {
   font-size: 14px;
+  overflow: auto;
+  min-height: 0;
+  flex: 1 1 auto;
 }
 
 .footer {
@@ -43,4 +48,6 @@
   justify-content: flex-end;
   gap: 8px;
   margin-top: 18px;
+  flex: none;
+  padding-bottom: 4px;
 }

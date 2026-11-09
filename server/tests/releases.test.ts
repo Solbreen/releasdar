@@ -13,6 +13,11 @@ describe('общий календарь релизов', () => {
     const created = await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'POST', url: '/api/products', payload: product });
     expect(created.statusCode).toBe(201);
     const id = created.json().id as number;
+    expect((await ctx.app.inject({ method: 'GET', url: '/api/products', headers: { cookie: ctx.cookie } })).json()[0].status).toBe('active');
+    for (const status of ['archived', 'active']) {
+      expect((await ctx.app.inject({ method: 'PUT', url: `/api/products/${id}`, headers: { cookie: ctx.cookie }, payload: { ...product, status } })).statusCode).toBe(200);
+      expect((await ctx.app.inject({ method: 'GET', url: '/api/products', headers: { cookie: ctx.cookie } })).json()[0].status).toBe(status);
+    }
     expect((await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'PUT', url: `/api/products/${id}`, payload: { ...product, name: 'Новый сервис' } })).statusCode).toBe(200);
     expect((await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'POST', url: '/api/releases', payload: { productId: id, date: '2027-02-30', description: '' } })).statusCode).toBe(400);
     expect((await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'POST', url: '/api/releases', payload: { productId: 999, date: '2027-02-28', description: '' } })).statusCode).toBe(400);

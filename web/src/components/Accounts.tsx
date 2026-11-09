@@ -25,13 +25,12 @@ export function Accounts({ onClose }: { onClose: () => void }): JSX.Element {
       <div className="releaseFeed">{accounts.map(account => <div className="releaseItem accountRow" key={account.id}><div><strong>{account.fullName || account.login}</strong><div>{account.login} · {account.role === 'rp' ? 'РП' : 'DevOps'}</div></div><div className="accountActions"><button type="button" className="button" onClick={() => open(account)}>Изменить</button><button type="button" className="button button--danger" disabled={busy} onClick={() => void remove(account)}>Удалить</button></div></div>)}{accounts.length === 0 && <p>Пользователи пока не созданы.</p>}</div>
       {!formOpen && error && <p className="fieldError" role="alert">{error}</p>}
     </Modal>
-    {formOpen && <Modal title={edit ? 'Изменить пользователя' : 'Новый пользователь'} onClose={() => setFormOpen(false)}><form className="releaseForm" onSubmit={event => void save(event)}>
+    {formOpen && <Modal title={edit ? 'Изменить пользователя' : 'Новый пользователь'} onClose={() => setFormOpen(false)} footer={<><button type="button" className="button" onClick={() => setFormOpen(false)}>Закрыть</button><button form="account-form" className="button button--primary" disabled={busy || !fullName.trim() || (!edit && (!login.trim() || password.length < 8))}>Сохранить</button></>}><form id="account-form" className="releaseForm" onSubmit={event => void save(event)}>
       <label>ФИО <input className="input" maxLength={200} required value={fullName} onChange={event => setFullName(event.target.value)} /></label>
       <label>Логин <input className="input" maxLength={100} required disabled={!!edit} value={login} onChange={event => setLogin(event.target.value)} /></label>
       <label>{edit ? 'Новый пароль (необязательно)' : 'Пароль'} <input className="input" type="password" autoComplete="new-password" minLength={8} maxLength={256} required={!edit} value={password} onChange={event => setPassword(event.target.value)} /></label>
       <label>Роль <select className="input" value={role} onChange={event => setRole(event.target.value as Account['role'])}><option value="rp">РП</option><option value="devops">DevOps</option></select></label>
       {error && <p className="fieldError" role="alert">{error}</p>}
-      <div className="releaseActions"><button type="button" className="button" onClick={() => setFormOpen(false)}>Закрыть</button><button className="button button--primary" disabled={busy || !fullName.trim() || (!edit && (!login.trim() || password.length < 8))}>Сохранить</button></div>
     </form></Modal>}
   </>;
 }

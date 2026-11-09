@@ -7,6 +7,7 @@ const productSchema = z.object({
   manager: z.string().trim().min(1).max(200),
   description: z.string().max(10000),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  status: z.enum(['active', 'archived']).optional(),
 });
 const releaseSchema = z.object({
   productId: z.number().int().positive(),
@@ -27,7 +28,7 @@ export function registerReleaseRoutes(app: FastifyInstance, { db }: AppDeps): vo
     const result = productSchema.safeParse(request.body);
     if (!result.success) return reply.code(400).send({ error: 'Заполните обязательные поля продукта' });
     const p = result.data;
-    const updated = db.prepare('UPDATE products SET name=?, manager=?, description=?, color=? WHERE id=?').run(p.name, p.manager, p.description, p.color, request.params.id);
+    const updated = db.prepare('UPDATE products SET name=?, manager=?, description=?, color=?, status=COALESCE(?, status) WHERE id=?').run(p.name, p.manager, p.description, p.color, p.status ?? null, request.params.id);
     return updated.changes ? { ok: true } : reply.code(404).send({ error: 'Продукт не найден' });
   });
   app.get('/api/releases', () => db.prepare('SELECT id, product_id AS productId, date, description FROM releases ORDER BY date DESC, id DESC').all());

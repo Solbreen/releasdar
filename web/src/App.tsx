@@ -8,7 +8,7 @@ import side from './components/UserList.module.css';
 import header from './components/Header.module.css';
 import './release.css';
 
-type Product = { id: number; name: string; manager: string; description: string; color: string };
+type Product = { id: number; name: string; manager: string; description: string; color: string; status: 'active' | 'archived' };
 type Release = { id: number; productId: number; date: string; description: string };
 type ProductForm = Omit<Product, 'id'> & { id?: number };
 type ReleaseForm = { productId: string; date: string; description: string };
@@ -96,40 +96,38 @@ function CalendarApp({ onLogout, role }: { onLogout: () => void; role: 'admin' |
         </div>
       </main>
       <aside className={side.panel}>
-        {canCreate && <button className="button button--primary productCreate" onClick={() => setProduct({ name: '', manager: '', description: '', color: colors[products.length % colors.length]! })}>Создать продукт</button>}
+        {canCreate && <button className="button button--primary productCreate" onClick={() => setProduct({ name: '', manager: '', description: '', color: colors[products.length % colors.length]!, status: 'active' })}>Создать продукт</button>}
         <h2 className={side.heading}>Продукты</h2>
         {products.length === 0 && <p className={side.emptyHint}>Пока нет продуктов</p>}
         {products.map(p => <div className={side.row} key={p.id}>
           <button className="productIndicator" aria-label={`${hidden.includes(p.id) ? 'Показать' : 'Скрыть'} ${p.name} на календаре`} aria-pressed={!hidden.includes(p.id)} style={{ background: p.color, opacity: hidden.includes(p.id) ? .35 : 1 }} onClick={() => setHidden(hidden.includes(p.id) ? hidden.filter(id => id !== p.id) : [...hidden, p.id])} />
-          <button className={side.main} onClick={() => setProduct(p)}>{p.name}</button>
+          <button className={side.main} onClick={() => setProduct(p)}>{p.name} {p.status === 'archived' && '· Архив'}</button>
         </div>)}
       </aside>
     </div>
-    {day && !release && <Modal title={`Релизы · ${formatHumanDate(day)} ${day.slice(0, 4)}`} onClose={() => setDay(null)}>
+    {day && !release && <Modal title={`Релизы · ${formatHumanDate(day)} ${day.slice(0, 4)}`} onClose={() => setDay(null)} footer={<><button className="button" onClick={() => setDay(null)}>Закрыть</button>{canCreate && <button className="button button--primary" onClick={() => setRelease({ productId: '', date: day, description: '' })}>Создать релиз</button>}</>}>
       <div className="releaseFeed">{releases.filter(r => r.date === day).map(r => <div className="releaseItem" key={r.id}><strong>{products.find(p => p.id === r.productId)?.name}</strong><p>{r.description || 'Без описания'}</p></div>)}
         {!releases.some(r => r.date === day) && <p>На этот день релизов нет.</p>}
-        {canCreate && <button className="button button--primary" onClick={() => setRelease({ productId: '', date: day, description: '' })}>Создать релиз</button>}
       </div>
     </Modal>}
-    {product && <Modal title={product.id ? 'Карточка продукта' : 'Новый продукт'} onClose={() => setProduct(null)}>
-      <form className="releaseForm" onSubmit={event => void saveProduct(event)}>
+    {product && <Modal title={product.id ? 'Карточка продукта' : 'Новый продукт'} onClose={() => setProduct(null)} footer={<><button type="button" className="button" onClick={() => setProduct(null)}>Закрыть</button>{canCreate && <button form="product-form" className="button button--primary" disabled={saving || !product.name.trim() || !product.manager.trim()}>Сохранить</button>}</>}>
+      <form id="product-form" className="releaseForm" onSubmit={event => void saveProduct(event)}>
         <label>Название продукта <input className="input" disabled={!canCreate} required maxLength={200} value={product.name} onChange={event => setProduct({ ...product, name: event.target.value })} /></label>
         <label>ФИО руководителя проекта <input className="input" disabled={!canCreate} required maxLength={200} value={product.manager} onChange={event => setProduct({ ...product, manager: event.target.value })} /></label>
         <label>Описание <textarea className="input" disabled={!canCreate} maxLength={10000} value={product.description} onChange={event => setProduct({ ...product, description: event.target.value })} /></label>
+        <label>Статус <select className="input" disabled={!canCreate || !product.id} value={product.status} onChange={event => setProduct({ ...product, status: event.target.value as Product['status'] })}><option value="active">Активен</option><option value="archived">Архив</option></select></label>
         <h3>Релизы</h3>
         <div className="releaseFeed">{releases.filter(r => r.productId === product.id).map(r => <div className="releaseItem" key={r.id}><strong>{r.date}</strong><p>{r.description || 'Без описания'}</p></div>)}</div>
         {error && <p className="fieldError" role="alert">{error}</p>}
-        <div className="releaseActions"><button type="button" className="button" onClick={() => setProduct(null)}>Закрыть</button>{canCreate && <button className="button button--primary" disabled={saving || !product.name.trim() || !product.manager.trim()}>Сохранить</button>}</div>
       </form>
     </Modal>}
-    {release && <Modal title="Новый релиз" onClose={() => setRelease(null)}>
-      <form className="releaseForm" onSubmit={event => void saveRelease(event)}>
+    {release && <Modal title="Новый релиз" onClose={() => setRelease(null)} footer={<><button type="button" className="button" onClick={() => setRelease(null)}>Закрыть</button><button form="release-form" className="button button--primary" disabled={saving || !release.productId || !release.date}>Сохранить</button></>}>
+      <form id="release-form" className="releaseForm" onSubmit={event => void saveRelease(event)}>
         <label>Продукт <select className="input" required value={release.productId} onChange={event => setRelease({ ...release, productId: event.target.value })}><option value="">Выберите продукт</option>{products.map(p => <option value={p.id} key={p.id}>{p.name}</option>)}</select></label>
         {products.length === 0 && <p>Сначала создайте продукт.</p>}
         <label>Дата <input className="input" type="date" min="2026-01-01" max="2036-12-31" required value={release.date} onChange={event => setRelease({ ...release, date: event.target.value })} /></label>
         <label>Описание <textarea className="input" maxLength={10000} value={release.description} onChange={event => setRelease({ ...release, description: event.target.value })} /></label>
         {error && <p className="fieldError" role="alert">{error}</p>}
-        <div className="releaseActions"><button type="button" className="button" onClick={() => setRelease(null)}>Закрыть</button><button className="button button--primary" disabled={saving || !release.productId || !release.date}>Сохранить</button></div>
       </form>
     </Modal>}
     {showAccounts && <Accounts onClose={() => setShowAccounts(false)} />}
@@ -157,10 +155,9 @@ export function App(): JSX.Element {
   };
   if (authenticated === null) return <p>Загрузка…</p>;
   if (authenticated) return <CalendarApp role={authenticated} onLogout={() => { void fetch('/api/auth/logout', { method: 'POST' }).finally(() => setAuthenticated(false)); }} />;
-  return <Modal title="Вход"><form className="releaseForm" onSubmit={event => void submit(event)}>
+  return <Modal title="Вход" footer={<button form="login-form" className="button button--primary">Войти</button>}><form id="login-form" className="releaseForm" onSubmit={event => void submit(event)}>
     <label>Логин <input className="input" autoComplete="username" required value={login} onChange={event => setLogin(event.target.value)} /></label>
     <label>Пароль <input className="input" type="password" autoComplete="current-password" required value={password} onChange={event => setPassword(event.target.value)} /></label>
     {error && <p className="fieldError" role="alert">{error}</p>}
-    <button className="button button--primary">Войти</button>
   </form></Modal>;
 }
