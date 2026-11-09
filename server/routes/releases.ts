@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { AppDeps } from '../app.js';
 
@@ -15,7 +15,7 @@ const releaseSchema = z.object({
   description: z.string().max(10000),
 });
 
-export function registerReleaseRoutes(app: FastifyInstance, { db }: AppDeps): void {
+export function registerReleaseRoutes(app: FastifyInstance, { db }: AppDeps, getRole: (request: FastifyRequest) => 'admin' | 'rp' | 'devops' | undefined): void {
   app.get('/api/products', () => db.prepare('SELECT p.id, p.name, COALESCE(a.full_name, p.manager) AS manager, p.manager_id AS managerId, p.description, p.color, p.status FROM products p LEFT JOIN accounts a ON a.id=p.manager_id ORDER BY p.id').all());
   app.post('/api/products', (request, reply) => {
     const result = productSchema.safeParse(request.body);
@@ -40,7 +40,18 @@ export function registerReleaseRoutes(app: FastifyInstance, { db }: AppDeps): vo
     return remove().changes ? { ok: true } : reply.code(404).send({ error: 'Продукт не найден' });
   });
   app.delete<{ Params: { id: string } }>('/api/releases/:id', (request, reply) => db.prepare('DELETE FROM releases WHERE id=?').run(request.params.id).changes ? { ok: true } : reply.code(404).send({ error: 'Релиз не найден' }));
-  app.get('/api/releases', () => db.prepare('SELECT id, product_id AS productId, date, description FROM releases ORDER BY date DESC, id DESC').all());
+  app.get('/api/releases', () => db.prepare('SELECT id, product_id AS productId, date, description, status FROM releases ORDER BY date DESC, id DESC').all());
+  app.patch<{ Params: { id: string } }>('/api/releases/:id/status', (request, reply) => {
+    const parsed = z.object({ status: z.enum(['rejected', 'in_progress', 'completed']), expectedStatus: z.enum(['planned', 'in_progress']) }).safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'Некорректный статус' });
+    const { status, expectedStatus } = parsed.data;
+    const role = getRole(request);
+    const allowed = expectedStatus === 'planned' && status === 'rejected' ? role === 'rp' || role === 'admin' : (expectedStatus === 'planned' && status === 'in_progress') || (expectedStatus === 'in_progress' && status === 'completed') ? role === 'devops' || role === 'admin' : false;
+    if (!allowed) return reply.code(403).send({ error: 'Переход недоступен' });
+    const updated = db.prepare('UPDATE releases SET status=? WHERE id=? AND status=?').run(status, request.params.id, expectedStatus);
+    if (!updated.changes) return reply.code(db.prepare('SELECT id FROM releases WHERE id=?').get(request.params.id) ? 409 : 404).send({ error: 'Релиз не найден или статус уже изменился' });
+    return { ok: true };
+  });
   app.post('/api/releases', (request, reply) => {
     const result = releaseSchema.safeParse(request.body);
     if (!result.success) return reply.code(400).send({ error: 'Выберите продукт и дату с 2026 по 2036 год' });

@@ -57,9 +57,9 @@ export async function buildApp(
     });
   });
 
-  registerAuth(app, deps.config.adminLogin, deps.config.adminPassword, deps.db);
+  const getRole = registerAuth(app, deps.config.adminLogin, deps.config.adminPassword, deps.db);
   registerHealthRoutes(app);
-  registerReleaseRoutes(app, deps);
+  registerReleaseRoutes(app, deps, getRole);
 
   // Обработчик 404 регистрируется один раз: либо отдаёт SPA, либо JSON-ошибку.
   if (options.serveStatic) {

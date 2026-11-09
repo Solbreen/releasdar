@@ -15,7 +15,7 @@ const verifyPassword = (password: string, stored: string): boolean => { const [s
 const accountSchema = z.object({ login: z.string().trim().min(1).max(100), fullName: z.string().trim().min(1).max(200), password: z.string().min(8).max(256), role: z.enum(['rp', 'devops']) });
 const updateSchema = z.object({ fullName: z.string().trim().min(1).max(200), role: z.enum(['rp', 'devops']), password: z.string().min(8).max(256).optional() });
 
-export function registerAuth(app: FastifyInstance, login: string, password: string, db: Db): void {
+export function registerAuth(app: FastifyInstance, login: string, password: string, db: Db): (request: FastifyRequest) => Role | undefined {
   const sessions = new Map<string, { expires: number; identity: Identity }>();
   const attempts = new Map<string, { count: number; until: number }>();
   const cookie = (r: FastifyRequest): string => /(?:^|;\s*)session=([a-f0-9]{64})(?:;|$)/.exec(r.headers.cookie ?? '')?.[1] ?? '';
@@ -76,4 +76,5 @@ export function registerAuth(app: FastifyInstance, login: string, password: stri
     else db.prepare('UPDATE accounts SET role=?, full_name=? WHERE id=?').run(parsed.data.role, parsed.data.fullName, id);
     invalidate(id); return { ok: true };
   });
+  return (request) => current(request)?.role;
 }

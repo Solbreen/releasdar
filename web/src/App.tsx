@@ -9,7 +9,9 @@ import header from './components/Header.module.css';
 import './release.css';
 
 type Product = { id: number; name: string; manager: string; managerId: number | null; description: string; color: string; status: 'active' | 'archived' };
-type Release = { id: number; productId: number; date: string; description: string };
+type ReleaseStatus = 'planned' | 'rejected' | 'in_progress' | 'completed';
+type Release = { id: number; productId: number; date: string; description: string; status: ReleaseStatus };
+const statusNames: Record<ReleaseStatus, string> = { planned: 'Запланирован', rejected: 'Отклонён', in_progress: 'В работе', completed: 'Выполнен' };
 type ProductForm = Omit<Product, 'id'> & { id?: number };
 type ReleaseForm = { productId: string; date: string; description: string };
 const colors = ['#3a86ff', '#e76f51', '#2a9d8f', '#9b5de5', '#c77e16', '#d64987'];
@@ -21,7 +23,7 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-function CalendarApp({ onLogout, user }: { onLogout: () => void; user: { role: 'admin' | 'rp' | 'devops'; id?: number } }): JSX.Element {
+function CalendarApp({ onLogout, user, themeButton }: { onLogout: () => void; user: { role: 'admin' | 'rp' | 'devops'; id?: number }; themeButton: JSX.Element }): JSX.Element {
   const { role } = user;
   const [year, setYear] = useState(Math.max(2026, Math.min(2036, new Date().getFullYear())));
   const [products, setProducts] = useState<Product[]>([]);
@@ -49,6 +51,18 @@ function CalendarApp({ onLogout, user }: { onLogout: () => void; user: { role: '
     if (!window.confirm(kind === 'products' ? 'Удалить продукт и все его релизы?' : 'Удалить релиз?')) return;
     try { await request(`/api/${kind}/${id}`, { method: 'DELETE' }); if (kind === 'products') setProduct(null); await refresh(); } catch (err) { setError((err as Error).message); }
   };
+  const changeStatus = async (r: Release, status: ReleaseStatus): Promise<void> => {
+    try { await request(`/api/releases/${r.id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status, expectedStatus: r.status }) }); await refresh(); }
+    catch { await refresh(); setError('Не удалось изменить статус. Проверьте актуальное состояние релиза.'); }
+  };
+  const releaseCard = (r: Release, title: string): JSX.Element => <div className="releaseItem" key={r.id}>
+    <div className="releaseHeading"><strong>{title}</strong><span className={`statusBadge releaseStatus-${r.status}`}>{statusNames[r.status]}</span></div>
+    <p>{r.description || 'Без описания'}</p><div className="releaseCardActions">
+      {r.status === 'planned' && (role === 'admin' || role === 'rp') && <button type="button" className="button" onClick={() => void changeStatus(r, 'rejected')}>Отклонить</button>}
+      {r.status === 'planned' && (role === 'admin' || role === 'devops') && <button type="button" className="button" onClick={() => void changeStatus(r, 'in_progress')}>В работу</button>}
+      {r.status === 'in_progress' && (role === 'admin' || role === 'devops') && <button type="button" className="button" onClick={() => void changeStatus(r, 'completed')}>Выполнен</button>}
+      {role === 'admin' && <button type="button" className="button button--danger" onClick={() => void remove('releases', r.id)}>Удалить релиз</button>}
+    </div></div>;
   useEffect(() => {
     void refresh();
     const onFocus = (): void => { void refresh(); };
@@ -84,6 +98,7 @@ function CalendarApp({ onLogout, user }: { onLogout: () => void; user: { role: '
         {Array.from({ length: 11 }, (_, i) => <option key={i}>{2026 + i}</option>)}
       </select></h1>
       <div className={header.user}>
+        {themeButton}
         {canCreate && <button className="button button--primary" onClick={() => setRelease({ productId: '', date: '', description: '' })}>Создать релиз</button>}
         {role === 'admin' && <button className="button" onClick={() => setShowAccounts(true)}>Пользователи</button>}
         <button className="button" onClick={onLogout}>Выйти</button>
@@ -116,7 +131,7 @@ function CalendarApp({ onLogout, user }: { onLogout: () => void; user: { role: '
       </aside>
     </div>
     {day && !release && <Modal title={`Релизы · ${formatHumanDate(day)} ${day.slice(0, 4)}`} onClose={() => setDay(null)} footer={<><button className="button" onClick={() => setDay(null)}>Закрыть</button>{canCreate && <button className="button button--primary" onClick={() => setRelease({ productId: '', date: day, description: '' })}>Создать релиз</button>}</>}>
-      <div className="releaseFeed">{visibleReleases.filter(r => r.date === day).map(r => <div className="releaseItem" key={r.id}><strong>{products.find(p => p.id === r.productId)?.name}</strong><p>{r.description || 'Без описания'}</p>{role === 'admin' && <button className="button button--danger" onClick={() => void remove('releases', r.id)}>Удалить релиз</button>}</div>)}
+      <div className="releaseFeed">{visibleReleases.filter(r => r.date === day).map(r => releaseCard(r, products.find(p => p.id === r.productId)?.name ?? 'Продукт'))}
         {!visibleReleases.some(r => r.date === day) && <p>На этот день релизов нет.</p>}
       </div>
     </Modal>}
@@ -127,7 +142,7 @@ function CalendarApp({ onLogout, user }: { onLogout: () => void; user: { role: '
         <label>Описание <textarea className="input" disabled={!canCreate} maxLength={10000} value={product.description} onChange={event => setProduct({ ...product, description: event.target.value })} /></label>
         <label>Статус <select className="input" disabled={!canCreate || !product.id} value={product.status} onChange={event => setProduct({ ...product, status: event.target.value as Product['status'] })}><option value="active">Активен</option><option value="archived">Архив</option></select></label>
         <h3>Релизы</h3>
-        <div className="releaseFeed">{releases.filter(r => r.productId === product.id).map(r => <div className="releaseItem" key={r.id}><strong>{r.date}</strong><p>{r.description || 'Без описания'}</p>{role === 'admin' && <button type="button" className="button button--danger" onClick={() => void remove('releases', r.id)}>Удалить релиз</button>}</div>)}</div>
+        <div className="releaseFeed">{releases.filter(r => r.productId === product.id).map(r => releaseCard(r, r.date))}</div>
         {error && <p className="fieldError" role="alert">{error}</p>}
       </form>
     </Modal>}
@@ -169,7 +184,7 @@ export function App(): JSX.Element {
     } catch { setError('Не удалось подключиться к серверу'); }
   };
   if (authenticated === null) return <p>Загрузка…</p>;
-  if (authenticated) return <><button type="button" className="button themeToggle" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>{theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}</button><CalendarApp user={authenticated} onLogout={() => { void fetch('/api/auth/logout', { method: 'POST' }).finally(() => setAuthenticated(false)); }} /></>;
+  if (authenticated) return <CalendarApp user={authenticated} themeButton={<button type="button" className="button" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>{theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}</button>} onLogout={() => { void fetch('/api/auth/logout', { method: 'POST' }).finally(() => setAuthenticated(false)); }} />;
   return <Modal title="Вход" footer={<button form="login-form" className="button button--primary">Войти</button>}><form id="login-form" className="releaseForm" onSubmit={event => void submit(event)}>
     <label>Логин <input className="input" autoComplete="username" required value={login} onChange={event => setLogin(event.target.value)} /></label>
     <label>Пароль <input className="input" type="password" autoComplete="current-password" required value={password} onChange={event => setPassword(event.target.value)} /></label>
