@@ -7,11 +7,12 @@ interface ModalProps {
   children: ReactNode;
   footer?: ReactNode;
   headerAction?: ReactNode;
+  wide?: boolean;
   /** Если не передан, модалку нельзя закрыть (экран входа). */
   onClose?: () => void;
 }
 
-export function Modal({ title, children, footer, headerAction, onClose }: ModalProps): JSX.Element {
+export function Modal({ title, children, footer, headerAction, onClose, wide = false }: ModalProps): JSX.Element {
   const ref = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
@@ -49,7 +50,7 @@ export function Modal({ title, children, footer, headerAction, onClose }: ModalP
         if (onClose && event.target === event.currentTarget) onClose();
       }}
     >
-      <div className={styles.dialog} style={position ? { position: 'fixed', left: position.x, top: position.y } : undefined} role="dialog" aria-modal="true" aria-label={title} ref={ref}>
+      <div className={`${styles.dialog} ${wide ? styles.wide : ''}`} style={position ? { position: 'fixed', left: position.x, top: position.y } : undefined} role="dialog" aria-modal="true" aria-label={title} ref={ref}>
         <div className={styles.heading}><h2 className={styles.title} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }}>{title}</h2>{headerAction}</div>
         <div className={styles.body}>{children}</div>
         {footer ? <div className={styles.footer}>{footer}</div> : null}

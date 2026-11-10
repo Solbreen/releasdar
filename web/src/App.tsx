@@ -35,11 +35,15 @@ function CalendarApp({ onLogout, user, themeButton }: { onLogout: () => void; us
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [showAccounts, setShowAccounts] = useState(false);
+  const [showReleaseQueue, setShowReleaseQueue] = useState(false);
   const [managers, setManagers] = useState<{ id: number; fullName: string }[]>([]);
   const [filter, setFilter] = useState<'active' | 'archived' | 'all'>('active');
   const visibleProducts = products.filter(p => filter === 'all' || p.status === filter);
   const visibleReleases = releases.filter(r => visibleProducts.some(p => p.id === r.productId));
   const canCreate = role !== 'devops';
+  const today = new Date();
+  const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const queue = (status: ReleaseStatus): Release[] => releases.filter(r => r.status === status).sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
 
   const refresh = async (): Promise<void> => {
     try {
@@ -99,6 +103,7 @@ function CalendarApp({ onLogout, user, themeButton }: { onLogout: () => void; us
       </select></h1>
       <div className={header.user}>
         {themeButton}
+        {(role === 'devops' || role === 'admin') && <button className="button" onClick={() => { setError(''); setShowReleaseQueue(true); void refresh(); }}>Релизы</button>}
         {canCreate && <button className="button button--primary" onClick={() => setRelease({ productId: '', date: '', description: '' })}>Создать релиз</button>}
         {role === 'admin' && <button className="button" onClick={() => setShowAccounts(true)}>Пользователи</button>}
         <button className="button" onClick={onLogout}>Выйти</button>
@@ -156,6 +161,17 @@ function CalendarApp({ onLogout, user, themeButton }: { onLogout: () => void; us
       </form>
     </Modal>}
     {showAccounts && <Accounts onClose={() => setShowAccounts(false)} />}
+    {showReleaseQueue && <Modal wide title="Релизы" onClose={() => setShowReleaseQueue(false)} footer={<button type="button" className="button" onClick={() => setShowReleaseQueue(false)}>Закрыть</button>}>
+      <p className="queueIntro">Общий список релизов всех продуктов.</p>
+      {error && <p className="fieldError" role="alert">{error}</p>}
+      {(['planned', 'in_progress'] as const).map(status => <section className="queueSection" key={status}>
+        <h3>{status === 'planned' ? 'Запланированы' : 'В работе'} <span className="queueCount">{queue(status).length}</span></h3>
+        {queue(status).length === 0 ? <p className="queueEmpty">Нет релизов</p> : queue(status).map(r => <div key={r.id} className={r.date < todayIso ? 'queueOverdue' : undefined}>{releaseCard(r, `${products.find(p => p.id === r.productId)?.name ?? 'Продукт'} · ${r.date}${r.date < todayIso ? ' · Просрочен' : ''}`)}</div>)}
+      </section>)}
+      <details className="queueSection"><summary>Выполнены <span className="queueCount">{queue('completed').length}</span></summary>
+        {queue('completed').length === 0 ? <p className="queueEmpty">Нет выполненных релизов</p> : [...queue('completed')].reverse().map(r => releaseCard(r, `${products.find(p => p.id === r.productId)?.name ?? 'Продукт'} · ${r.date}`))}
+      </details>
+    </Modal>}
   </div>;
 }
 

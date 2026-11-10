@@ -19,6 +19,7 @@ it('создаёт релиз для выбранного дня и показы
   }));
   render(<App />);
   await screen.findByRole('button', { name: 'Портал' });
+  expect(screen.getByRole('button', { name: 'Релизы' })).toBeTruthy();
   fireEvent.change(screen.getByLabelText('Год'), { target: { value: '2028' } });
   fireEvent.click(screen.getByRole('button', { name: /2028-02-29/ }));
   fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Создать релиз' }));
@@ -30,4 +31,29 @@ it('создаёт релиз для выбранного дня и показы
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   fireEvent.click(screen.getByRole('button', { name: 'Портал' }));
   expect(within(screen.getByRole('dialog')).getByText('Версия 1')).toBeTruthy();
+});
+
+it('показывает DevOps общую очередь без отклонённых релизов и переводит релиз в работу', async () => {
+  const releases = [
+    { id: 1, productId: 1, date: '2026-01-01', description: 'Ранний', status: 'planned' },
+    { id: 2, productId: 1, date: '2030-01-01', description: 'Поздний', status: 'planned' },
+    { id: 3, productId: 1, date: '2027-01-01', description: 'Отклонённый', status: 'rejected' },
+    { id: 4, productId: 1, date: '2027-02-01', description: 'Завершённый', status: 'completed' },
+  ];
+  vi.stubGlobal('fetch', vi.fn(async (url: string, options?: RequestInit) => {
+    if (url === '/api/auth/me') return { ok: true, json: async () => ({ role: 'devops' }) };
+    if (url === '/api/products') return { ok: true, json: async () => [{ id: 1, name: 'Архивный', status: 'archived' }] };
+    if (url === '/api/project-managers') return { ok: true, json: async () => [] };
+    if (options?.method === 'PATCH') { releases[0]!.status = 'in_progress'; return { ok: true, json: async () => ({ ok: true }) }; }
+    return { ok: true, json: async () => releases };
+  }));
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Релизы' }));
+  const dialog = screen.getByRole('dialog', { name: 'Релизы' });
+  await within(dialog).findByText('Ранний');
+  expect(within(dialog).queryByText('Отклонённый')).toBeNull();
+  expect(within(dialog).getByText('Ранний').compareDocumentPosition(within(dialog).getByText('Поздний')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(within(dialog).getByText('Ранний').closest('.releaseItem')?.textContent).toContain('Архивный');
+  fireEvent.click(within(within(dialog).getByText('Ранний').closest('.releaseItem') as HTMLElement).getByRole('button', { name: 'В работу' }));
+  await waitFor(() => expect(within(within(dialog).getByText('Ранний').closest('.releaseItem') as HTMLElement).getByText('В работе')).toBeTruthy());
 });

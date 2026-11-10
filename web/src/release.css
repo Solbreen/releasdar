@@ -10,8 +10,9 @@
 .releaseItem { padding: 10px; border: 1px solid var(--border); border-radius: var(--radius); }
 .releaseItem p { margin: 4px 0 0; white-space: pre-wrap; }
 .releaseError { padding: 10px 20px; color: var(--danger); }
-.accountRow { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
-.accountActions { display: flex; gap: 6px; margin-left: auto; }
+.accountRow { display: flex; justify-content: space-between; align-items: center; gap: 10px; min-width: 300px; }
+.accountInfo { min-width: 0; overflow-wrap: anywhere; }
+.accountActions { display: flex; flex: none; gap: 6px; margin-left: auto; }
 .releaseHeading { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
 .releaseCardActions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 .statusBadge.releaseStatus-planned { color: #58687d; background: #e9edf2; }
@@ -21,3 +22,11 @@
 .statusBadge { display: inline-block; flex: none; border-radius: 8px; padding: 6px 9px; font-size: 12px; font-weight: 600; }
 .statusBadge.active { color: #176b52; background: #d6f4e9; }
 .statusBadge.archived { color: #58687d; background: #e9edf2; }
+.queueIntro, .queueEmpty { color: var(--text-muted); font-size: 13px; }
+.queueSection { margin-top: 16px; }
+.queueSection h3, .queueSection summary { margin: 0 0 8px; font-size: 15px; font-weight: 600; }
+.queueSection summary { cursor: pointer; }
+.queueSection .releaseItem { margin-bottom: 8px; }
+.queueCount { color: var(--text-muted); font-size: 12px; }
+.queueOverdue .releaseItem { border-color: var(--danger); }
+.queueOverdue .releaseHeading strong { color: var(--danger); }

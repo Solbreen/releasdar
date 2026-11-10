@@ -35,6 +35,7 @@
   touch-action: none;
   user-select: none;
 }
+.wide { width: min(680px, calc(100vw - 32px)); }
 .heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex: none; }
 .heading .title { flex: 1; }
 
