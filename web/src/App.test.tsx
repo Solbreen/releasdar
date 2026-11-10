@@ -52,6 +52,13 @@ it('показывает DevOps общую очередь без отклонё�
   const dialog = screen.getByRole('dialog', { name: 'Релизы' });
   await within(dialog).findByText('Ранний');
   expect(within(dialog).queryByText('Отклонённый')).toBeNull();
+  expect(within(dialog).queryByText('Завершённый')).toBeNull();
+  const plannedSection = within(dialog).getByText('Запланированы', { exact: false }).closest('details')!;
+  const progressSection = within(dialog).getByText('В работе', { exact: false }).closest('details')!;
+  expect(plannedSection.open).toBe(true);
+  expect(progressSection.open).toBe(false);
+  fireEvent.click(within(progressSection).getByText('В работе', { exact: false }));
+  expect(progressSection.open).toBe(true);
   expect(within(dialog).getByText('Ранний').compareDocumentPosition(within(dialog).getByText('Поздний')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(within(dialog).getByText('Ранний').closest('.releaseItem')?.textContent).toContain('Архивный');
   fireEvent.click(within(within(dialog).getByText('Ранний').closest('.releaseItem') as HTMLElement).getByRole('button', { name: 'В работу' }));

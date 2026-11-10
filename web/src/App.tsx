@@ -164,13 +164,10 @@ function CalendarApp({ onLogout, user, themeButton }: { onLogout: () => void; us
     {showReleaseQueue && <Modal wide title="Релизы" onClose={() => setShowReleaseQueue(false)} footer={<button type="button" className="button" onClick={() => setShowReleaseQueue(false)}>Закрыть</button>}>
       <p className="queueIntro">Общий список релизов всех продуктов.</p>
       {error && <p className="fieldError" role="alert">{error}</p>}
-      {(['planned', 'in_progress'] as const).map(status => <section className="queueSection" key={status}>
-        <h3>{status === 'planned' ? 'Запланированы' : 'В работе'} <span className="queueCount">{queue(status).length}</span></h3>
+      {(['planned', 'in_progress'] as const).map(status => <details className="queueSection" key={status} open={status === 'planned' ? true : undefined}>
+        <summary>{status === 'planned' ? 'Запланированы' : 'В работе'} <span className="queueCount">{queue(status).length}</span></summary>
         {queue(status).length === 0 ? <p className="queueEmpty">Нет релизов</p> : queue(status).map(r => <div key={r.id} className={r.date < todayIso ? 'queueOverdue' : undefined}>{releaseCard(r, `${products.find(p => p.id === r.productId)?.name ?? 'Продукт'} · ${r.date}${r.date < todayIso ? ' · Просрочен' : ''}`)}</div>)}
-      </section>)}
-      <details className="queueSection"><summary>Выполнены <span className="queueCount">{queue('completed').length}</span></summary>
-        {queue('completed').length === 0 ? <p className="queueEmpty">Нет выполненных релизов</p> : [...queue('completed')].reverse().map(r => releaseCard(r, `${products.find(p => p.id === r.productId)?.name ?? 'Продукт'} · ${r.date}`))}
-      </details>
+      </details>)}
     </Modal>}
   </div>;
 }
