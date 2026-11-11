@@ -60,8 +60,8 @@ function CalendarApp({ onLogout, user, themeButton }: { onLogout: () => void; us
     try { await request(`/api/${kind}/${id}`, { method: 'DELETE' }); if (kind === 'products') setProduct(null); await refresh(); } catch (err) { setError((err as Error).message); }
   };
   const releaseCard = (r: Release, title: string): JSX.Element => <div className="releaseItem" key={r.id}>
-    <div className="releaseHeading"><strong>{title}</strong><button type="button" className="button" aria-label="Открыть релиз" title="Открыть релиз" onClick={() => { setError(''); setRelease({ ...r, productId: String(r.productId) }); }}>✎</button></div>
-    <p>{r.environment} {r.releaseType ? `· ${r.releaseType}` : ''}</p><p>{r.description || 'Без описания'}</p><div className="releaseCardActions">
+    <div className="releaseDetails"><strong>{title}</strong><p>{r.environment} {r.releaseType ? `· ${r.releaseType}` : ''}</p></div><div className="releaseCardActions">
+      <button type="button" className="button iconAction" aria-label="Открыть релиз" title="Открыть релиз" onClick={() => { setError(''); setRelease({ ...r, productId: String(r.productId) }); }}>✎</button>
       {role === 'admin' && <button type="button" className="button button--danger" aria-label="Удалить релиз" title="Удалить релиз" onClick={() => void remove('releases', r.id)}>🗑</button>}
     </div></div>;
   useEffect(() => {
@@ -128,7 +128,7 @@ function CalendarApp({ onLogout, user, themeButton }: { onLogout: () => void; us
         <label>Статус <select className="input" value={filter} onChange={event => setFilter(event.target.value as typeof filter)}><option value="active">Активен</option><option value="archived">Архив</option><option value="all">Все</option></select></label>
         {visibleProducts.length === 0 && <p className={side.emptyHint}>Нет проектов</p>}
         {visibleProducts.map(p => <div className={side.row} key={p.id}>
-          <button className="button" aria-label={`${hidden.includes(p.id) ? 'Показать' : 'Скрыть'} ${p.name} на календаре`} aria-pressed={!hidden.includes(p.id)} onClick={() => setHidden(hidden.includes(p.id) ? hidden.filter(id => id !== p.id) : [...hidden, p.id])}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>{hidden.includes(p.id) && <path d="M3 3l18 18"/>}</svg></button>
+          <button className="eyeButton" aria-label={`${hidden.includes(p.id) ? 'Показать' : 'Скрыть'} ${p.name} на календаре`} aria-pressed={!hidden.includes(p.id)} onClick={() => setHidden(hidden.includes(p.id) ? hidden.filter(id => id !== p.id) : [...hidden, p.id])}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>{hidden.includes(p.id) && <path d="M3 3l18 18"/>}</svg></button>
           <button className={side.main} onClick={() => setProduct(p)}>{p.name}</button><span className={`statusBadge ${p.status}`}>{p.status === 'active' ? 'Активен' : 'Архив'}</span>
         </div>)}
       </aside>

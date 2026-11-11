@@ -31,7 +31,7 @@ it('создаёт релиз для выбранного дня и показы
   fireEvent.click(within(dialog).getByRole('button', { name: 'Сохранить' }));
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   fireEvent.click(screen.getByRole('button', { name: 'Портал' }));
-  expect(within(screen.getByRole('dialog')).getByText('Версия 1')).toBeTruthy();
+  expect(within(screen.getByRole('dialog')).getByText('Test')).toBeTruthy();
   fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Закрыть' }));
   expect(screen.getByRole('button', { name: /2028-02-29, релизов: 1/ }).className).toContain('releaseDay');
   fireEvent.click(screen.getByRole('button', { name: 'Скрыть Портал на календаре' }));
@@ -61,12 +61,12 @@ it('показывает DevOps релизы текущего месяца бе�
   render(<App />);
   fireEvent.click(await screen.findByRole('button', { name: 'Релизы' }));
   const dialog = screen.getByRole('dialog', { name: 'Релизы за текущий месяц' });
-  await within(dialog).findByText('Ранний');
+  await within(dialog).findByText(/Архивный ·/);
   expect(within(dialog).queryByText('Отклонённый')).toBeNull();
   expect(within(dialog).queryByText('Завершённый')).toBeNull();
   expect(within(dialog).queryByText('Поздний')).toBeNull();
   expect(within(dialog).queryByText('Запланирован')).toBeNull();
-  expect(within(dialog).getByText('Ранний').closest('.releaseItem')?.textContent).toContain('Архивный');
+  expect(within(dialog).queryByText('Ранний')).toBeNull();
   fireEvent.click(within(dialog).getByRole('button', { name: 'Открыть релиз' }));
   const card = screen.getByRole('dialog', { name: 'Карточка релиза' });
   expect((within(card).getByLabelText('Дата') as HTMLInputElement).disabled).toBe(true);

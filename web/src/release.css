@@ -39,3 +39,9 @@
 .weekly h2 { font-size: 16px; }
 .weekDay { border: 1px solid var(--border); border-radius: 8px; padding: 8px; margin-bottom: 6px; }
 .weekDay .releaseItem { margin-top: 6px; }
+.eyeButton { border: 0; background: transparent; color: var(--text-muted); padding: 2px; display: inline-flex; cursor: pointer; }
+.releaseItem:has(.releaseDetails) { display: flex; justify-content: space-between; gap: 8px; }
+.releaseDetails { min-width: 0; }
+.releaseDetails p { margin: 2px 0 0; }
+.releaseItem .releaseCardActions { display: flex; flex-direction: column; flex-wrap: nowrap; margin: 0; gap: 2px; }
+.iconAction, .releaseCardActions .button--danger, .accountActions .button--danger { font-size: 22px; line-height: 1; }

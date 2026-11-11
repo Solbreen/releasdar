@@ -38,6 +38,7 @@
 .wide { width: min(680px, calc(100vw - 32px)); }
 .heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex: none; }
 .heading .title { flex: 1; }
+.close { border: 0; background: transparent; color: var(--text-muted); font-size: 30px; line-height: 1; cursor: pointer; padding: 0 4px; margin: -12px -12px 0 0; }
 
 .body {
   font-size: 14px;
