@@ -25,17 +25,28 @@ it('создаёт релиз для выбранного дня и показы
   fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Создать релиз' }));
   const dialog = screen.getByRole('dialog');
   expect((within(dialog).getByLabelText('Дата') as HTMLInputElement).value).toBe('2028-02-29');
-  fireEvent.change(within(dialog).getByLabelText('Продукт'), { target: { value: '1' } });
+  fireEvent.change(within(dialog).getByLabelText('Проект'), { target: { value: '1' } });
+  fireEvent.change(within(dialog).getByLabelText('Стенд'), { target: { value: 'Test' } });
   fireEvent.change(within(dialog).getByLabelText('Описание'), { target: { value: 'Версия 1' } });
   fireEvent.click(within(dialog).getByRole('button', { name: 'Сохранить' }));
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   fireEvent.click(screen.getByRole('button', { name: 'Портал' }));
   expect(within(screen.getByRole('dialog')).getByText('Версия 1')).toBeTruthy();
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Закрыть' }));
+  expect(screen.getByRole('button', { name: /2028-02-29, релизов: 1/ }).className).toContain('releaseDay');
+  fireEvent.click(screen.getByRole('button', { name: 'Скрыть Портал на календаре' }));
+  expect(screen.getByRole('button', { name: /2028-02-29, релизов: 0/ }).className).not.toContain('releaseDay');
+  fireEvent.change(screen.getByLabelText('Вид'), { target: { value: 'month' } });
+  fireEvent.change(screen.getByLabelText('Месяц'), { target: { value: '1' } });
+  expect(screen.getByRole('button', { name: /2028-02-29/ })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: /2028-03-01/ })).toBeNull();
 });
 
-it('показывает DevOps общую очередь без отклонённых релизов и переводит релиз в работу', async () => {
+it('показывает DevOps релизы текущего месяца без статусов и разрешает только просмотр', async () => {
+  const now = new Date();
+  const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
   const releases = [
-    { id: 1, productId: 1, date: '2026-01-01', description: 'Ранний', status: 'planned' },
+    { id: 1, productId: 1, date, description: 'Ранний', status: 'planned', environment: 'Test', releaseType: '' },
     { id: 2, productId: 1, date: '2030-01-01', description: 'Поздний', status: 'planned' },
     { id: 3, productId: 1, date: '2027-01-01', description: 'Отклонённый', status: 'rejected' },
     { id: 4, productId: 1, date: '2027-02-01', description: 'Завершённый', status: 'completed' },
@@ -49,18 +60,15 @@ it('показывает DevOps общую очередь без отклонё�
   }));
   render(<App />);
   fireEvent.click(await screen.findByRole('button', { name: 'Релизы' }));
-  const dialog = screen.getByRole('dialog', { name: 'Релизы' });
+  const dialog = screen.getByRole('dialog', { name: 'Релизы за текущий месяц' });
   await within(dialog).findByText('Ранний');
   expect(within(dialog).queryByText('Отклонённый')).toBeNull();
   expect(within(dialog).queryByText('Завершённый')).toBeNull();
-  const plannedSection = within(dialog).getByText('Запланированы', { exact: false }).closest('details')!;
-  const progressSection = within(dialog).getByText('В работе', { exact: false }).closest('details')!;
-  expect(plannedSection.open).toBe(true);
-  expect(progressSection.open).toBe(false);
-  fireEvent.click(within(progressSection).getByText('В работе', { exact: false }));
-  expect(progressSection.open).toBe(true);
-  expect(within(dialog).getByText('Ранний').compareDocumentPosition(within(dialog).getByText('Поздний')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(within(dialog).queryByText('Поздний')).toBeNull();
+  expect(within(dialog).queryByText('Запланирован')).toBeNull();
   expect(within(dialog).getByText('Ранний').closest('.releaseItem')?.textContent).toContain('Архивный');
-  fireEvent.click(within(within(dialog).getByText('Ранний').closest('.releaseItem') as HTMLElement).getByRole('button', { name: 'В работу' }));
-  await waitFor(() => expect(within(within(dialog).getByText('Ранний').closest('.releaseItem') as HTMLElement).getByText('В работе')).toBeTruthy());
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Открыть релиз' }));
+  const card = screen.getByRole('dialog', { name: 'Карточка релиза' });
+  expect((within(card).getByLabelText('Дата') as HTMLInputElement).disabled).toBe(true);
+  expect(within(card).queryByRole('button', { name: 'Сохранить' })).toBeNull();
 });

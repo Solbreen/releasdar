@@ -30,3 +30,12 @@
 .queueCount { color: var(--text-muted); font-size: 12px; }
 .queueOverdue .releaseItem { border-color: var(--danger); }
 .queueOverdue .releaseHeading strong { color: var(--danger); }
+.calendarControls { display: flex; gap: 12px; margin-bottom: 14px; }
+.calendarControls label { display: flex; gap: 6px; align-items: center; }
+.singleMonth { grid-template-columns: minmax(0, 600px) !important; }
+.releaseDay { background: #bfe4f9 !important; color: #18364b !important; }
+.todayDay { outline: 3px solid #df3545; outline-offset: -3px; }
+.weekly { margin-bottom: 20px; }
+.weekly h2 { font-size: 16px; }
+.weekDay { border: 1px solid var(--border); border-radius: 8px; padding: 8px; margin-bottom: 6px; }
+.weekDay .releaseItem { margin-top: 6px; }

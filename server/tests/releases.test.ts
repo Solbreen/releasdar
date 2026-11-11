@@ -23,12 +23,20 @@ describe('общий календарь релизов', () => {
     expect((await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'POST', url: '/api/releases', payload: { productId: id, date: '2027-02-30', description: '' } })).statusCode).toBe(400);
     expect((await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'POST', url: '/api/releases', payload: { productId: 999, date: '2027-02-28', description: '' } })).statusCode).toBe(400);
     for (const date of ['2026-01-01', '2036-12-31']) {
-      expect((await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'POST', url: '/api/releases', payload: { productId: id, date, description: 'Релиз' } })).statusCode).toBe(201);
+      expect((await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'POST', url: '/api/releases', payload: { productId: id, date, description: 'Релиз', environment: 'Test', releaseType: '' } })).statusCode).toBe(201);
     }
     expect((await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'POST', url: '/api/releases', payload: { productId: id, date: '2037-01-01', description: '' } })).statusCode).toBe(400);
     expect((await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'GET', url: '/api/products' })).json()[0].name).toBe('Новый сервис');
     expect((await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'GET', url: '/api/releases' })).json().map((r: {date: string}) => r.date)).toEqual(['2036-12-31', '2026-01-01']);
     const releaseId = (await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'GET', url: '/api/releases' })).json()[0].id;
+    for (const date of ['2026-11-13', '2026-11-14', '2026-11-15', '2026-11-03', '2026-11-04', '2026-12-31']) {
+      const payload = { productId: id, date, description: '', environment: 'Prod', releaseType: '' };
+      expect((await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'POST', url: '/api/releases', payload })).statusCode).toBe(400);
+      expect((await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'PUT', url: `/api/releases/${releaseId}`, payload })).statusCode).toBe(400);
+    }
+    for (const date of ['2026-11-09', '2026-11-12']) {
+      expect((await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'PUT', url: `/api/releases/${releaseId}`, payload: { productId: id, date, description: '', environment: 'Prod', releaseType: '' } })).statusCode).toBe(200);
+    }
     expect((await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'DELETE', url: `/api/releases/${releaseId}` })).statusCode).toBe(200);
     expect((await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'DELETE', url: `/api/products/${id}` })).statusCode).toBe(200);
     expect((await ctx.app.inject({ headers: { cookie: ctx.cookie }, method: 'GET', url: '/api/releases' })).json()).toEqual([]);

@@ -51,7 +51,7 @@ export function Modal({ title, children, footer, headerAction, onClose, wide = f
       }}
     >
       <div className={`${styles.dialog} ${wide ? styles.wide : ''}`} style={position ? { position: 'fixed', left: position.x, top: position.y } : undefined} role="dialog" aria-modal="true" aria-label={title} ref={ref}>
-        <div className={styles.heading}><h2 className={styles.title} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }}>{title}</h2>{headerAction}</div>
+        <div className={styles.heading}><h2 className={styles.title} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }}>{title}</h2>{headerAction}{onClose && <button type="button" className="button" aria-label="Закрыть" onClick={onClose}>×</button>}</div>
         <div className={styles.body}>{children}</div>
         {footer ? <div className={styles.footer}>{footer}</div> : null}
       </div>

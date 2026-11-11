@@ -1,14 +1,14 @@
 :root {
-  --bg: #f6f7f9;
+  --bg: #f6f8fb;
   --surface: #ffffff;
-  --surface-muted: #f0f2f5;
-  --border: #d9dde3;
+  --surface-muted: #f2f5f8;
+  --border: #e0e6ed;
   --border-strong: #b9c0ca;
   --text: #1c2026;
   --text-muted: #6a7280;
   --accent: #3a86ff;
   --danger: #c9485b;
-  --weekend-bg: #eceff3;
+  --weekend-bg: #f0f3f7;
   /* Праздник: приглушённый песочно-янтарный тон. Намеренно не совпадает
      ни с серым выходным, ни с насыщенными цветами пользователей. */
   --holiday-bg: #fbeed2;

@@ -38,15 +38,16 @@ it('администратор создаёт пользователей, рол
     const rp = await signin('ИВАН', 'newpassword');
     const product = await app.inject({ method: 'POST', url: '/api/products', headers: { cookie: rp }, payload: { name: 'Продукт', managerId: created.json().id, description: '', color: '#123456' } });
     expect(product.statusCode).toBe(201);
-    const release = await app.inject({ method: 'POST', url: '/api/releases', headers: { cookie: rp }, payload: { productId: product.json().id, date: '2027-01-01', description: '' } });
+    const release = await app.inject({ method: 'POST', url: '/api/releases', headers: { cookie: rp }, payload: { productId: product.json().id, date: '2027-01-01', description: '', environment: 'Test', releaseType: '' } });
     expect(release.statusCode).toBe(201);
-    const rejected = await app.inject({ method: 'POST', url: '/api/releases', headers: { cookie: rp }, payload: { productId: product.json().id, date: '2027-01-02', description: '' } });
+    const rejected = await app.inject({ method: 'POST', url: '/api/releases', headers: { cookie: rp }, payload: { productId: product.json().id, date: '2027-01-02', description: '', environment: 'Test', releaseType: '' } });
     expect((await app.inject({ method: 'PATCH', url: `/api/releases/${rejected.json().id}/status`, headers: { cookie: rp }, payload: { expectedStatus: 'planned', status: 'rejected' } })).statusCode).toBe(200);
     const releaseUrl = `/api/releases/${release.json().id}/status`;
     expect((await app.inject({ method: 'PATCH', url: releaseUrl, headers: { cookie: rp }, payload: { expectedStatus: 'planned', status: 'in_progress' } })).statusCode).toBe(403);
     const createdDev = await app.inject({ method: 'POST', url: '/api/accounts', headers: { cookie: admin }, payload: { login: 'dev', fullName: 'Девопс', password: 'password1', role: 'devops' } });
     expect(createdDev.statusCode).toBe(201);
     const devCookie = await signin('dev', 'password1');
+    expect((await app.inject({ method: 'PUT', url: `/api/releases/${release.json().id}`, headers: { cookie: devCookie }, payload: {} })).statusCode).toBe(403);
     expect((await app.inject({ method: 'PATCH', url: releaseUrl, headers: { cookie: devCookie }, payload: { expectedStatus: 'planned', status: 'rejected' } })).statusCode).toBe(403);
     expect((await app.inject({ method: 'PATCH', url: releaseUrl, headers: { cookie: devCookie }, payload: { expectedStatus: 'planned', status: 'in_progress' } })).statusCode).toBe(200);
     expect((await app.inject({ method: 'PATCH', url: releaseUrl, headers: { cookie: devCookie }, payload: { expectedStatus: 'planned', status: 'in_progress' } })).statusCode).toBe(409);

@@ -31,6 +31,7 @@ export function registerAuth(app: FastifyInstance, login: string, password: stri
     if (!user) return reply.code(401).send({ error: 'Требуется вход' });
     if (path.startsWith('/api/accounts') && user.role !== 'admin') return reply.code(403).send({ error: 'Недостаточно прав' });
     if (request.method === 'DELETE' && (path.startsWith('/api/products/') || path.startsWith('/api/releases/')) && user.role !== 'admin') return reply.code(403).send({ error: 'Недостаточно прав' });
+    if (request.method === 'PUT' && path.startsWith('/api/releases/') && user.role === 'devops') return reply.code(403).send({ error: 'Недостаточно прав' });
     if ((path === '/api/products' || path.startsWith('/api/products/') || path === '/api/releases') && request.method !== 'GET' && request.method !== 'HEAD' && user.role === 'devops') return reply.code(403).send({ error: 'Недостаточно прав' });
   });
   app.post('/api/auth/login', { bodyLimit: 4096 }, async (request, reply) => {
