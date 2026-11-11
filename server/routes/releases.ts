@@ -18,11 +18,15 @@ const releaseSchema = z.object({
   releaseType: z.string().max(200).default(''),
 });
 
-function prohibited(date: string): boolean {
+function prohibited(date: string): string | null {
   const day = new Date(`${date}T00:00:00Z`);
   const weekday = day.getUTCDay();
   day.setUTCDate(day.getUTCDate() + 1);
-  return weekday === 0 || weekday === 5 || weekday === 6 || isHoliday(date) || isHoliday(day.toISOString().slice(0, 10));
+  if (isHoliday(date)) return 'праздничный день';
+  if (weekday === 0 || weekday === 6) return 'выходной день';
+  if (isHoliday(day.toISOString().slice(0, 10))) return 'день перед праздником';
+  if (weekday === 5) return 'день перед выходным';
+  return null;
 }
 
 export function registerReleaseRoutes(app: FastifyInstance, { db }: AppDeps, getRole: (request: FastifyRequest) => 'admin' | 'rp' | 'devops' | undefined): void {
@@ -66,7 +70,8 @@ export function registerReleaseRoutes(app: FastifyInstance, { db }: AppDeps, get
     const result = releaseSchema.safeParse(request.body);
     if (!result.success) return reply.code(400).send({ error: 'Выберите проект, стенд и дату с 2026 по 2036 год' });
     const r = result.data;
-    if (r.environment === 'Prod' && prohibited(r.date)) return reply.code(400).send({ error: 'Релиз на Prod запрещён в выходной, праздник и день перед ними' });
+    const reason = r.environment === 'Prod' ? prohibited(r.date) : null;
+    if (reason) return reply.code(400).send({ error: `Релиз на Prod запрещён: выбран ${reason}.` });
     if (!db.prepare('SELECT id FROM products WHERE id=?').get(r.productId)) return reply.code(400).send({ error: 'Проект не найден' });
     const inserted = db.prepare('INSERT INTO releases (product_id, date, description, environment, release_type) VALUES (?, ?, ?, ?, ?)').run(r.productId, r.date, r.description, r.environment, r.releaseType);
     return reply.code(201).send({ id: inserted.lastInsertRowid });
@@ -75,7 +80,8 @@ export function registerReleaseRoutes(app: FastifyInstance, { db }: AppDeps, get
     const result = releaseSchema.safeParse(request.body);
     if (!result.success) return reply.code(400).send({ error: 'Заполните обязательные поля' });
     const r = result.data;
-    if (r.environment === 'Prod' && prohibited(r.date)) return reply.code(400).send({ error: 'Релиз на Prod запрещён в выходной, праздник и день перед ними' });
+    const reason = r.environment === 'Prod' ? prohibited(r.date) : null;
+    if (reason) return reply.code(400).send({ error: `Релиз на Prod запрещён: выбран ${reason}.` });
     if (!db.prepare('SELECT id FROM products WHERE id=?').get(r.productId)) return reply.code(400).send({ error: 'Проект не найден' });
     const updated = db.prepare('UPDATE releases SET product_id=?, date=?, description=?, environment=?, release_type=? WHERE id=?').run(r.productId, r.date, r.description, r.environment, r.releaseType, request.params.id);
     return updated.changes ? { ok: true } : reply.code(404).send({ error: 'Релиз не найден' });

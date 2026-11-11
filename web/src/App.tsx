@@ -95,7 +95,7 @@ function CalendarApp({ onLogout, user, themeButton }: { onLogout: () => void; us
 
   return <div className={layout.app}>
     <header className={header.header}>
-      <h1 className={header.title}>Календарь релизов · <select aria-label="Год" className="input yearSelect" value={year} onChange={event => setYear(Number(event.target.value))}>
+      <h1 className={header.title}><span>Календарь релизов ·</span><select aria-label="Год" className="input yearSelect" value={year} onChange={event => setYear(Number(event.target.value))}>
         {Array.from({ length: 11 }, (_, i) => <option key={i}>{2026 + i}</option>)}
       </select></h1>
       <div className={header.user}>
@@ -109,6 +109,7 @@ function CalendarApp({ onLogout, user, themeButton }: { onLogout: () => void; us
     {error && <div className="releaseError" role="alert">{error} <button className="button" onClick={() => void refresh()}>Обновить</button></div>}
     <div className={layout.layout}>
       <main className={layout.calendarColumn}>
+        <div className="calendarLegend" aria-label="Обозначения календаря"><span><i className="legendWeekend" aria-hidden="true" />Выходной</span><span><i className="legendHoliday" aria-hidden="true" />Праздник</span><span><i className="legendRelease" aria-hidden="true" />Релиз</span><span><i className="legendToday" aria-hidden="true" />Сегодня</span></div>
         <div className="calendarControls"><label>Вид <select className="input" value={view} onChange={e => setView(e.target.value as 'year' | 'month')}><option value="year">Год</option><option value="month">Месяц</option></select></label>{view === 'month' && <label>Месяц <select className="input" value={month} onChange={e => setMonth(Number(e.target.value))}>{buildYear(year).map((m, i) => <option value={i} key={i}>{m.title}</option>)}</select></label>}</div>
         <div className={`${cal.year} ${view === 'month' ? 'singleMonth' : ''}`}>
           {buildYear(year).filter((_, i) => view === 'year' || i === month).map(month => <section className={cal.month} key={month.month}>
@@ -194,7 +195,7 @@ export function App(): JSX.Element {
     } catch { setError('Не удалось подключиться к серверу'); }
   };
   if (authenticated === null) return <p>Загрузка…</p>;
-  if (authenticated) return <CalendarApp user={authenticated} themeButton={<button type="button" className="button" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>{theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}</button>} onLogout={() => { void fetch('/api/auth/logout', { method: 'POST' }).finally(() => setAuthenticated(false)); }} />;
+  if (authenticated) return <CalendarApp user={authenticated} themeButton={<button type="button" className="themeButton" aria-label={theme === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему'} title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{theme === 'dark' ? <><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></> : <path d="M20.9 13A9 9 0 0 1 11 3.1 9 9 0 1 0 20.9 13Z"/>}</svg></button>} onLogout={() => { void fetch('/api/auth/logout', { method: 'POST' }).finally(() => setAuthenticated(false)); }} />;
   return <Modal title="Вход" footer={<button form="login-form" className="button button--primary">Войти</button>}><form id="login-form" className="releaseForm" onSubmit={event => void submit(event)}>
     <label>Логин <input className="input" autoComplete="username" required value={login} onChange={event => setLogin(event.target.value)} /></label>
     <label>Пароль <input className="input" type="password" autoComplete="current-password" required value={password} onChange={event => setPassword(event.target.value)} /></label>

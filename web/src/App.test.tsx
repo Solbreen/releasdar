@@ -4,6 +4,27 @@ import { App } from './App.js';
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
+it('позволяет отправить заполненный релиз Prod и показывает причину отказа', async () => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string, options?: RequestInit) => {
+    if (url === '/api/auth/me') return { ok: true, json: async () => ({ role: 'admin' }) };
+    if (url === '/api/products') return { ok: true, json: async () => [{ id: 1, name: 'Проект', status: 'active' }] };
+    if (url === '/api/project-managers') return { ok: true, json: async () => [] };
+    if (options?.method === 'POST') return { ok: false, status: 400, json: async () => ({ error: 'Релиз на Prod запрещён: выбран выходной день.' }) };
+    return { ok: true, json: async () => [] };
+  }));
+  render(<App />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Создать релиз' }));
+  const dialog = screen.getByRole('dialog', { name: 'Новый релиз' });
+  await within(dialog).findByRole('option', { name: 'Проект' });
+  fireEvent.change(within(dialog).getByLabelText('Проект'), { target: { value: '1' } });
+  fireEvent.change(within(dialog).getByLabelText('Стенд'), { target: { value: 'Prod' } });
+  fireEvent.change(within(dialog).getByLabelText('Дата'), { target: { value: '2026-11-14' } });
+  const save = within(dialog).getByRole('button', { name: 'Сохранить' }) as HTMLButtonElement;
+  expect(save.disabled).toBe(false);
+  fireEvent.click(save);
+  expect(await within(dialog).findByText('Релиз на Prod запрещён: выбран выходной день.')).toBeTruthy();
+});
+
 it('создаёт релиз для выбранного дня и показывает его в карточке продукта', async () => {
   const products = [{ id: 1, name: 'Портал', manager: 'Иван Иванов', managerId: 1, description: '', color: '#3a86ff', status: 'active' }];
   const releases: { id: number; productId: number; date: string; description: string }[] = [];
