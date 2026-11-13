@@ -108,17 +108,17 @@ function CalendarApp({ onLogout, user, themeButton }: { onLogout: () => void; us
     </header>
     {error && <div className="releaseError" role="alert">{error} <button className="button" onClick={() => void refresh()}>Обновить</button></div>}
     <div className={layout.layout}>
-      <main className={layout.calendarColumn}>
+      <main className={`${layout.calendarColumn} ${view === 'month' ? 'monthView' : ''}`}>
         <div className="calendarLegend" aria-label="Обозначения календаря"><span><i className="legendWeekend" aria-hidden="true" />Выходной</span><span><i className="legendHoliday" aria-hidden="true" />Праздник</span><span><i className="legendRelease" aria-hidden="true" />Релиз</span><span><i className="legendToday" aria-hidden="true" />Сегодня</span></div>
         <div className="calendarControls"><label>Вид <select className="input" value={view} onChange={e => setView(e.target.value as 'year' | 'month')}><option value="year">Год</option><option value="month">Месяц</option></select></label>{view === 'month' && <label>Месяц <select className="input" value={month} onChange={e => setMonth(Number(e.target.value))}>{buildYear(year).map((m, i) => <option value={i} key={i}>{m.title}</option>)}</select></label>}</div>
         <div className={`${cal.year} ${view === 'month' ? 'singleMonth' : ''}`}>
-          {buildYear(year).filter((_, i) => view === 'year' || i === month).map(month => <section className={cal.month} key={month.month}>
-            <h3 className={cal.monthTitle}>{month.title}</h3>
-            <div className={cal.weekdays}>{WEEKDAY_NAMES_RU.map((name, i) => <span className={i >= 5 ? cal.weekdayWeekend : cal.weekday} key={name}>{name}</span>)}</div>
-            <div className={cal.grid}>{month.weeks.flat().map((cell, i) => cell ?
-              <button key={cell.date} className={`${cal.day} ${cell.weekend ? cal.dayWeekend : ''} ${findHolidayName(cell.date) ? cal.dayHoliday : ''} ${visibleReleases.some(r => r.date === cell.date) ? 'releaseDay' : ''} ${cell.date === todayIso ? 'todayDay' : ''}`} title={findHolidayName(cell.date) ?? undefined} onClick={() => setDay(cell.date)} aria-label={`${cell.date}, релизов: ${visibleReleases.filter(r => r.date === cell.date).length}`}>
+          {buildYear(year).filter((_, i) => view === 'year' || i === month).map(month => <section className={`${cal.month} monthPanel`} key={month.month}>
+            <h3 className={`${cal.monthTitle} monthPanelTitle`}>{month.title}</h3>
+            <div className={`${cal.weekdays} monthWeekdays`}>{WEEKDAY_NAMES_RU.map((name, i) => <span className={`${i >= 5 ? cal.weekdayWeekend : cal.weekday} monthWeekday`} key={name}>{name}</span>)}</div>
+            <div className={`${cal.grid} monthGrid`}>{month.weeks.flat().map((cell, i) => cell ?
+              <button key={cell.date} className={`${cal.day} monthDay ${cell.weekend ? cal.dayWeekend : ''} ${findHolidayName(cell.date) ? cal.dayHoliday : ''} ${visibleReleases.some(r => r.date === cell.date) ? 'releaseDay' : ''} ${cell.date === todayIso ? 'todayDay' : ''}`} title={findHolidayName(cell.date) ?? undefined} onClick={() => setDay(cell.date)} aria-label={`${cell.date}, релизов: ${visibleReleases.filter(r => r.date === cell.date).length}`}>
                 <span>{cell.day}</span>
-              </button> : <span className={cal.empty} key={i} />)}</div>
+              </button> : <span className={`${cal.empty} monthEmpty`} key={i} />)}</div>
           </section>)}
         </div>
       </main>

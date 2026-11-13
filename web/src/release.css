@@ -40,7 +40,15 @@
 .queueOverdue .releaseHeading strong { color: var(--danger); }
 .calendarControls { display: flex; gap: 12px; margin-bottom: 14px; }
 .calendarControls label { display: flex; gap: 6px; align-items: center; }
-.singleMonth { grid-template-columns: minmax(0, 600px) !important; }
+.monthView { display: flex; flex-direction: column; min-height: calc(100dvh - 110px); }
+.singleMonth { grid-template-columns: minmax(0, 1fr) !important; flex: 1; }
+.singleMonth .monthPanel { display: flex; flex-direction: column; min-width: 0; padding: clamp(12px, 2vw, 24px); }
+.singleMonth .monthPanelTitle { font-size: 20px; margin-bottom: 16px; }
+.singleMonth .monthWeekdays { margin-bottom: 8px; }
+.singleMonth .monthWeekday { font-size: 13px; }
+.singleMonth .monthGrid { flex: 1; grid-auto-rows: minmax(56px, 1fr); gap: clamp(5px, 1vw, 12px); }
+.singleMonth .monthDay { aspect-ratio: auto; min-height: 56px; font-size: clamp(14px, 1.6vw, 22px); }
+.singleMonth .monthEmpty { aspect-ratio: auto; }
 .releaseDay { background: #bfe4f9 !important; color: #18364b !important; }
 .todayDay { outline: 3px solid #df3545; outline-offset: -3px; }
 .weekly { margin-bottom: 20px; }
